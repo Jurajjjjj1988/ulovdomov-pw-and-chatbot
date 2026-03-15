@@ -1,0 +1,44 @@
+{
+  "name": "ulovdomov-chatbot",
+  "version": "0.1.0",
+  "description": "Multi-agent customer support chatbot for real estate (úlovdomov-themed portfolio demo) — Czech/Slovak LLM agent with RAG knowledge base, intent routing, escalation, tool calling. Azure OpenAI deployment-ready.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/index.ts",
+    "chat": "tsx src/cli.ts",
+    "analyze:logs": "tsx src/conversation-log-analyzer.ts",
+    "ingest:kb": "tsx src/rag/ingest.ts",
+    "test": "vitest run",
+    "lint": "eslint 'src/**/*.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "llm",
+    "chatbot",
+    "rag",
+    "multi-agent",
+    "openai",
+    "azure-openai",
+    "prompt-engineering",
+    "slovak",
+    "czech",
+    "real-estate"
+  ],
+  "author": "Juraj Kapusansky",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.73.1",
+    "dotenv": "^16.4.7",
+    "chalk": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
