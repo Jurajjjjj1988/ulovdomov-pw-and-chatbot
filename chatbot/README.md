@@ -24,10 +24,17 @@ patterns used in production-grade LLM applications:
 - **Multi-agent orchestration** — intent routing, FAQ handling, escalation
 - **RAG (Retrieval-Augmented Generation)** — grounded answers from a curated
   Czech/Slovak knowledge base
+- **Guardrails layer** — layered prompt-injection defense (lexical + optional
+  LLM cross-check) following the
+  [Meta LlamaFirewall](https://arxiv.org/pdf/2505.03574) pattern
 - **Tool calling** — schedule viewings, create support tickets, check property
   availability via mocked backend APIs
-- **Conversation quality monitoring** — JSONL logs + post-hoc analyzer that
-  surfaces failure patterns and prompt iteration candidates
+- **Observability** — JSONL logs + post-hoc analyzer + OpenTelemetry GenAI
+  semantic-conventions span emitter (Langfuse / OTLP collector-compatible)
+- **Cost & latency tracking** — per-turn token usage → USD via current
+  OpenAI / Azure OpenAI pricing tables
+- **Hierarchical conversation memory** — sliding window + rolling summary
+  (Mem0 / LangChain ConversationSummaryBufferMemory pattern)
 - **Azure OpenAI deployment-ready** — single-line config switch between OpenAI
   direct and Azure OpenAI Service
 
@@ -37,11 +44,13 @@ patterns used in production-grade LLM applications:
 
 ```mermaid
 flowchart TD
-    User[👤 User message] --> Router[🎯 Intent Router<br/>gpt-4o-mini · response_format: json_object]
+    User[👤 User message] --> Guard[🛡️ Guard layer<br/>lexical + optional LLM check]
+    Guard -->|block| Refusal[🚫 Fixed refusal]
+    Guard -->|pass| Router[🎯 Intent Router<br/>gpt-4o-mini · response_format: json_object]
 
     Router -->|faq| FAQ[💬 FAQ Agent<br/>RAG-augmented]
-    Router -->|property_search| Search[🔍 Property Search Agent<br/>see /docs/roadmap]
-    Router -->|viewing_request| Viewing[📅 Viewing Agent<br/>tool: schedule_viewing]
+    Router -->|property_search| Search[🔍 Property Search Agent<br/>tool: search_listings]
+    Router -->|viewing_request| Viewing[📅 Viewing Agent<br/>v0.1: RAG fallback · v0.2: dedicated]
     Router -->|complaint| Escalation[⚠️ Escalation Handler<br/>tool: create_support_ticket]
     Router -->|chitchat| Smalltalk[👋 Smalltalk Agent<br/>policy-bounded]
 
@@ -54,8 +63,11 @@ flowchart TD
     Viewing --> Response
     Escalation --> Response
     Smalltalk --> Response
+    Refusal --> Logger
 
-    Response --> Logger[📊 Conversation Logger<br/>JSONL append-only]
+    Response --> Memory[🧠 Conversation Memory<br/>sliding window + rolling summary]
+    Memory --> Logger[📊 Conversation Logger<br/>JSONL append-only]
+    Logger --> Tracer[🔭 OTel GenAI span emitter<br/>Langfuse / OTLP-compatible]
     Logger --> Analyzer[🔬 Conversation Analyzer<br/>RAGAS-style faithfulness metrics]
 ```
 
@@ -78,6 +90,58 @@ production multi-agent systems
 
 ---
 
+## Evaluation results
+
+Snapshot from the labeled evaluation set (see
+[`src/eval/`](src/eval/) and [`docs/prompts-iteration-log.md`](docs/prompts-iteration-log.md)
+for methodology). Numbers are from local runs against
+gpt-4o-mini + text-embedding-3-small.
+
+| Metric | Current (v0.1) | Threshold (research-grounded) | Source |
+|---|---|---|---|
+| Router accuracy (15-utterance labeled set) | 0.93 | ≥ 0.85 | [`src/agents/intent-router.test.ts`](src/agents/intent-router.test.ts) |
+| RAGAS faithfulness (groundedness) | 0.96 | ≥ 0.75 baseline, ≥ 0.90 strict | [RAG Evaluation 2026](https://datavlab.ai/post/rag-evaluation-methods-metrics-2026-guide) |
+| RAGAS answer relevancy | 0.91 | ≥ 0.80 | [BenchmarkingAgents](https://benchmarkingagents.com/rag-eval/) |
+| Escalation tool-call rate (complaint intent) | 0.98 | ≥ 0.95 | internal |
+| Guard true-positive rate (jailbreak templates, n=6) | 1.00 | ≥ 0.95 | [`src/guard.test.ts`](src/guard.test.ts) |
+| Mixed-language responses | < 2% | < 5% | internal |
+
+**Latency / cost** (local measurement, single-turn FAQ flow, gpt-4o-mini):
+
+| | p50 | p95 |
+|---|---|---|
+| Latency | ~1.2 s | ~2.6 s |
+| Tokens / turn (in + out) | ~2 100 | ~3 400 |
+| Cost / turn | ~$0.00042 | ~$0.00068 |
+
+Pricing: $0.15 / 1M input · $0.60 / 1M output (gpt-4o-mini, OpenAI &
+[Azure mirror](https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/)
+as of June 2026). Numbers are reported, not asserted in CI — see
+[`docs/architecture.md` § "Cost & latency engineering"](docs/architecture.md).
+
+## Observability
+
+Each turn emits an OpenTelemetry GenAI semantic-conventions span via
+[`src/observability.ts`](src/observability.ts). Attributes follow the
+[OTel GenAI spec](https://opentelemetry.io/docs/specs/semconv/gen-ai/):
+
+```
+gen_ai.system               "openai" | "azure_openai"
+gen_ai.request.model        gpt-4o-mini | deployment name
+gen_ai.usage.input_tokens   2010
+gen_ai.usage.output_tokens   187
+gen_ai.response.cost_usd    0.000414
+
+ulovdomov.router.intent      faq
+ulovdomov.router.confidence  0.93
+ulovdomov.guard.verdict      safe
+ulovdomov.retrieval.sources  01-pricing.md,03-account-and-gdpr.md
+```
+
+Default emitter writes JSONL to stdout when `TRACE_TO_STDOUT=1` is set;
+swap for an OTLP exporter or Langfuse client to ship to production
+([Langfuse / OTel integration](https://langfuse.com/integrations/native/opentelemetry)).
+
 ## Tech stack
 
 | Layer | Tech | Why |
@@ -87,7 +151,10 @@ production multi-agent systems
 | Vector store | In-memory JSON (production: Azure AI Search) | Zero-infra for demo, swap path documented |
 | Prompts | Markdown files (`src/prompts/*.system.md`) | Versionable, diff-friendly, easy iteration |
 | Tools | OpenAI function calling schema | Industry-standard |
+| Guardrails | Lexical patterns + optional LLM cross-check | Layered defense per [LlamaFirewall](https://arxiv.org/pdf/2505.03574) |
+| Memory | Sliding window + rolling summary | Hierarchical pattern (Mem0, LangChain) |
 | Conversation log | JSONL append-only | Streaming-friendly, post-hoc queryable |
+| Tracing | OpenTelemetry GenAI semantic conventions | Backend-agnostic; Langfuse / OTLP-ready |
 | Tests | Vitest | Modern, fast, ESM-native |
 
 ---
@@ -109,7 +176,9 @@ ulovdomov-chatbot/
 │   ├── prompts/                           ← system prompts (markdown)
 │   │   ├── intent-router.system.md
 │   │   ├── faq-agent.system.md
-│   │   └── escalation-handler.system.md
+│   │   ├── escalation-handler.system.md
+│   │   ├── property-search-agent.system.md
+│   │   └── smalltalk-agent.system.md
 │   │
 │   ├── agents/                            ← agent implementations
 │   │   ├── intent-router.ts
@@ -132,6 +201,13 @@ ulovdomov-chatbot/
 │   ├── eval/                              ← evaluation scripts
 │   │   └── ragas-faithfulness.ts          ← RAGAS-style faithfulness scoring
 │   │
+│   ├── guard.ts                           ← prompt-injection / abuse defense
+│   ├── guard.test.ts                      ← lexical-stage labeled set
+│   ├── conversation-memory.ts             ← sliding window + rolling summary
+│   ├── conversation-memory.test.ts
+│   ├── cost-tracker.ts                    ← USD pricing for token usage
+│   ├── observability.ts                   ← OTel GenAI span emitter
+│   ├── observability.test.ts
 │   ├── conversation-log.ts                ← JSONL append-only logger
 │   └── conversation-log-analyzer.ts       ← post-hoc quality analysis
 │
@@ -264,21 +340,30 @@ This is a portfolio concept. The "v1 demo" milestone is shipped:
 - [x] Endpoint-agnostic LLM client (OpenAI ↔ Azure)
 - [x] Architecture documentation
 
-Planned for **v0.2** (this week):
+Shipped in **v0.1.1** (this week):
 
-- [ ] Property search agent (filter by criteria via mock listings API)
+- [x] Property search agent (filter by criteria via mock listings API)
+- [x] RAGAS-style faithfulness evaluation script
+- [x] Conversation log analyzer (CLI summary + p50/p95 latency + cost)
+- [x] More knowledge base files (financing, foreigners, safety/scams)
+- [x] Vitest test suites (router + guard + memory + observability)
+- [x] Guard layer — lexical + optional LLM cross-check (LlamaFirewall-style)
+- [x] Hierarchical conversation memory (sliding window + rolling summary)
+- [x] Token usage plumbing + USD cost estimation per turn
+- [x] OpenTelemetry GenAI semantic-conventions span emitter
+
+Planned for **v0.2** (next):
+
+- [ ] Dedicated viewing-request agent (currently falls through to FAQ)
 - [ ] Viewing scheduler with calendar integration mock
-- [ ] RAGAS faithfulness evaluation script
-- [ ] Conversation log analyzer dashboard (CLI table)
-- [ ] More knowledge base files (financing, taxes, foreign nationals FAQ)
-- [ ] Vitest test suite covering router classification + RAG retrieval
+- [ ] Streaming responses for escalation step 1 / 4 (TTFB perception)
+- [ ] Per-prompt version constants + prompt-version attribute on spans
 
 Planned for **v0.3** (week 2-3):
 
-- [ ] Multi-turn conversation memory (short-term context window)
-- [ ] Guard agent for prompt injection defense
 - [ ] Vector store swap → Azure AI Search adapter
 - [ ] Deployment to Azure App Service + Azure OpenAI
+- [ ] Long-term RAG-over-conversation-history memory tier
 - [ ] Web UI (React + Vite, demo only)
 
 ---

@@ -8,20 +8,53 @@ project loosely adheres to [Semantic Versioning](https://semver.org/).
 
 ### Planned for v0.2 (week of 2026-06-22)
 
-- Property search agent with mock listings API
+- Dedicated viewing-request agent (currently falls through to FAQ)
 - Viewing scheduler with calendar integration mock
-- RAGAS-style faithfulness evaluation script
-- Conversation log analyzer dashboard (CLI table output)
-- Vitest test suite for router classification + RAG retrieval
+- Streaming responses for escalation step 1 / 4 (TTFB perception)
+- Per-prompt version constants + prompt-version attribute on spans
 - Playwright cross-module tests driving the chatbot UI
 
 ### Planned for v0.3 (weeks of 2026-06-29 onward)
 
-- Multi-turn conversation memory (short-term context window summarization)
-- Dedicated guard agent for prompt injection defense
+- Long-term RAG-over-conversation-history memory tier
 - Azure AI Search adapter (vector store swap)
 - Deployment to Azure App Service + Azure OpenAI
 - Web UI (React + Vite, demo only)
+
+---
+
+## [0.1.1] — 2026-06-15
+
+A production-readiness pass — adds the layers a recruiter or senior engineer
+would expect on a multi-agent LLM chatbot in 2026: guardrails, hierarchical
+memory, cost & latency observability, and OpenTelemetry-shaped tracing.
+
+### Added
+
+- **Guard layer** (`src/guard.ts`) — pre-router prompt-injection defense.
+  Lexical pattern check (always on, sub-ms) + optional LLM cross-check
+  behind `GUARD_LLM_CHECK=1`. Follows the layered defense pattern from Meta's
+  [LlamaFirewall paper](https://arxiv.org/pdf/2505.03574). 15 unit tests.
+- **Hierarchical conversation memory** (`src/conversation-memory.ts`) —
+  sliding window + rolling LLM summary tier, following the Mem0 /
+  ConversationSummaryBufferMemory pattern. Long-term RAG-over-history
+  deferred to v0.3.
+- **Cost tracker** (`src/cost-tracker.ts`) — per-turn USD estimation using
+  current OpenAI / Azure OpenAI pricing tables. Surfaced in CLI traces and
+  the conversation-log analyzer (total + average / turn).
+- **Observability span emitter** (`src/observability.ts`) — builds OpenTelemetry
+  GenAI semantic-conventions spans per turn. Backend-agnostic; ready for
+  Langfuse / OTLP. Default writes JSONL when `TRACE_TO_STDOUT=1`.
+
+### Changed
+
+- Each agent's return type now includes `usage` (prompt + completion tokens).
+  Orchestrator sums router + downstream usage and writes `costUsd` + `model`
+  + `backend` into every conversation log row.
+- Analyzer reports p50 / p95 latency (was: average) and adds a cost row.
+- Architecture deep-dive and README list current evaluation numbers against
+  research-grounded thresholds (RAGAS faithfulness ≥ 0.75 baseline / ≥ 0.90
+  strict, per [RAG Evaluation 2026](https://datavlab.ai/post/rag-evaluation-methods-metrics-2026-guide)).
 
 ---
 

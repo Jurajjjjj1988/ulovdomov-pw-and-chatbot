@@ -123,6 +123,41 @@ bot is making fun of me"). Hardcoded "no emoji in escalation flow."
 
 ---
 
+## Guard layer
+
+### v0.1 — 2026-06-15
+**Initial draft.** Two-stage layer in front of the router:
+1. Lexical pre-check on a high-precision pattern set (EN + CS/SK).
+2. Optional LLM cross-check classifying `safe` / `suspicious` / `malicious`.
+
+**Labeled set:** 12 utterances (6 jailbreak templates, 6 legitimate). True
+positive rate on the jailbreak set: 6/6. False positive rate on legitimate:
+0/6. Lexical patterns chosen for precision over recall — novel jailbreak
+phrasings will get past stage 1, mitigated by enabling stage 2 in production.
+
+**Trade-off documented:** the guard is one layer, not the last line of
+defense. The router + per-agent system prompts each provide additional
+scope enforcement. This matches the **layered defense** recommendation in
+the [LLM Guardrails 2026 reference](https://www.digitalapplied.com/blog/llm-guardrails-production-safety-layers-reference-2026).
+
+---
+
+## Conversation memory
+
+### v0.1 — 2026-06-15
+**Initial hierarchical implementation.** Sliding window (default 4 pairs)
++ rolling LLM summary triggered when conversation crosses 8 pairs. Summary
+prompt is itself an iteration target — early drafts produced overly long
+summaries that defeated the compression goal. Current version caps at
+~3 sentences with `max_tokens: 200`.
+
+**Trade-off:** long-term RAG-over-conversation-history is deliberately
+deferred. For úlovdomov.cz's predominantly single-session use case, the
+window + summary tier is sufficient; adding the third tier would cost
+extra retrieval per turn for queries that rarely benefit from it.
+
+---
+
 ## Evaluation methodology
 
 Each prompt change is gated by:

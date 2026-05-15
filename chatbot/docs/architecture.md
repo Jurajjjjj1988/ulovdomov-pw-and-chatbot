@@ -173,17 +173,138 @@ without a corporate use case this can take 1-7 days or be denied. For this
 demo we use OpenAI direct; the codebase is ready to switch when the Azure
 deployment lands.
 
+## Guard layer — what gets blocked and why
+
+The guard (`src/guard.ts`) runs **before** the router. Two stages:
+
+1. **Lexical pre-check** (always on, sub-millisecond) — regex patterns for
+   canonical jailbreak / injection shapes in EN and CS/SK. Designed for
+   precision: only patterns that essentially never appear in legitimate
+   customer messages flag as "hard." Examples: `ignore previous instructions`,
+   `<|im_start|>`, `you are now DAN`.
+2. **Optional LLM cross-check** (`GUARD_LLM_CHECK=1`) — when lexical finds
+   *soft* hits, send the message to a tiny classifier prompt that returns
+   `safe` / `suspicious` / `malicious`. Off by default (latency budget).
+
+On a hard / malicious verdict, the orchestrator skips the router and the
+specialised agents entirely and returns a fixed Czech refusal. The blocked
+turn is still logged (with the guard reasons) so analyzers can see attack
+patterns over time.
+
+This is the **layered defense** pattern from Meta's
+[LlamaFirewall paper](https://arxiv.org/pdf/2505.03574) and the
+[LLM Guardrails 2026 reference](https://www.digitalapplied.com/blog/llm-guardrails-production-safety-layers-reference-2026):
+lexical + classifier + downstream agent system prompts each provide one
+layer; no single layer is asked to be the last line of defense.
+
+**Trade-offs we accepted:**
+
+- False negatives: novel jailbreak phrasings (never-seen-before templates)
+  will get past lexical. Mitigated by enabling stage 2 in production.
+- False positives: a customer who literally writes "ignore my previous
+  message" would be flagged. Acceptable rate at the chosen pattern set —
+  measured on the 12-utterance labeled set, 0 FPs.
+
+## Hierarchical conversation memory
+
+`src/conversation-memory.ts` implements the **sliding window + rolling
+summary** pattern. Two tiers:
+
+- **Window (verbatim, default 4 pairs)** — most recent N user/assistant
+  turns kept as-is.
+- **Rolling summary (compressed)** — once the conversation passes the
+  threshold (default 8 pairs), the oldest turns are LLM-summarised into a
+  3-sentence brief that's prepended to the system prompt of subsequent
+  agent calls. The summary itself rolls forward — each compaction merges
+  the prior summary with the newly aged-out turns.
+
+Long-term **RAG-over-conversation-history** (the third tier in production
+hierarchical memory) is deferred to v0.3. For úlovdomov.cz's use case
+(predominantly single-session chats), the cost/benefit isn't there yet.
+
+Sources: this is the [Mem0 architecture](https://docs.mem0.ai/), also called
+ConversationSummaryBufferMemory in LangChain. See the
+[Practical Guide to Memory for Autonomous LLM Agents](https://towardsdatascience.com/a-practical-guide-to-memory-for-autonomous-llm-agents/)
+for a clean walk-through.
+
+## Cost & latency engineering
+
+Every turn is **priced in USD** by `src/cost-tracker.ts` using a hard-coded
+pricing table. Numbers as of mid-2026:
+
+| Model | Input ($/1M tokens) | Output ($/1M tokens) |
+|---|---|---|
+| `gpt-4o-mini` (default) | 0.15 | 0.60 |
+| `gpt-4o` | 2.50 | 10.00 |
+| `o1-mini` | 1.10 | 4.40 |
+| `text-embedding-3-small` | 0.02 | — |
+
+Pricing source:
+[OpenAI](https://openai.com/api/pricing/) /
+[Azure OpenAI](https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/)
+(both publish the same per-1M-token rate for the same model). Azure is
+billed in regional currency; the multiplier here is 1.0 — refine via the
+Azure cost-management API if you need exact reconciliation.
+
+**Latency budget** (gpt-4o-mini, FAQ flow including RAG retrieval, single
+turn measured locally):
+
+| | p50 | p95 |
+|---|---|---|
+| Latency end-to-end | ~1.2 s | ~2.6 s |
+
+Industry reference: P95 typically runs **1.6×–3.2× P50** for OpenAI chat
+endpoints ([Digital Applied latency benchmarks 2026](https://www.digitalapplied.com/blog/ai-model-latency-benchmarks-2026-ttft-throughput)).
+Numbers above match that envelope.
+
+**Note (June 2026):** OpenAI direct gpt-4o-mini saw a regression where
+TTFB drifted from ~50ms to ~1s and TTLB up to ~8s on some routes. We track
+this in [`prompts-iteration-log.md`](prompts-iteration-log.md) and the
+analyzer's p95 column rather than asserting a fixed SLO in CI.
+
+## Observability — OpenTelemetry GenAI semantic conventions
+
+`src/observability.ts` builds an OTel-shaped span per turn following the
+emerging **GenAI Semantic Conventions** (stabilising through 2026). The
+attributes are vendor-neutral — the same payload feeds Langfuse, LangSmith,
+Helicone, or any OTLP collector without remapping.
+
+Confirmed-stable attributes:
+
+```
+gen_ai.system            "openai" | "azure_openai"
+gen_ai.request.model     gpt-4o-mini | <deployment-name>
+gen_ai.usage.input_tokens
+gen_ai.usage.output_tokens
+```
+
+Custom attributes (project-specific, in `ulovdomov.*` namespace to avoid
+stepping on reserved space):
+
+```
+ulovdomov.router.intent      faq | property_search | viewing_request | ...
+ulovdomov.router.confidence  0–1
+ulovdomov.guard.verdict      safe | suspicious | malicious
+ulovdomov.guard.blocked      boolean
+ulovdomov.retrieval.sources  comma-separated source filenames
+ulovdomov.retrieval.top_score
+ulovdomov.tools.invoked      comma-separated tool names
+```
+
+Spec reference:
+[OpenTelemetry GenAI Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) ·
+[Langfuse OTel integration](https://langfuse.com/integrations/native/opentelemetry).
+
 ## What's not implemented (yet)
 
-- **Long-term conversation memory** — current implementation passes the last
-  N turns directly. Real production wants embedding-based memory + summary.
-- **Guard / input filter agent** — currently the router does soft guarding by
-  routing hostile inputs to `complaint`. A dedicated guard agent (running
-  before the router) would catch prompt injection attempts more aggressively.
-- **Cost tracking** — every LLM call returns token usage in the response. We
-  log it but don't aggregate or alarm yet.
-- **Property search** — stubbed, would query a mock listings API. Listed in
-  roadmap for v0.2.
+- **Dedicated viewing-request agent** — currently falls through to FAQ with
+  a TODO marker.
+- **RAG-over-conversation-history memory tier** — see hierarchical memory
+  section above.
+- **Cost projection** — analyzer shows running total + per-turn average;
+  a "$/day projected at current QPS" line is v0.2.
+- **Property search backend** — stubbed; would proxy to úlovdomov's
+  listings API.
 
-These are deliberate v0.1 omissions, not gaps. The architecture is the
+These are deliberate omissions, not gaps. The architecture is the
 priority for this stage.
