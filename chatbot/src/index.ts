@@ -17,6 +17,8 @@ import { randomUUID } from "node:crypto";
 import { routeIntent, type Intent } from "./agents/intent-router.js";
 import { answerFaq } from "./agents/faq-agent.js";
 import { handleEscalation } from "./agents/escalation-handler.js";
+import { handlePropertySearch } from "./agents/property-search-agent.js";
+import { handleSmalltalk } from "./agents/smalltalk-agent.js";
 import { retrieve } from "./rag/retriever.js";
 import { logTurn, type ConversationTurn } from "./conversation-log.js";
 
@@ -74,17 +76,28 @@ export async function processTurn(input: ProcessTurnInput): Promise<ProcessTurnO
       }
       break;
     }
-    case "property_search":
-    case "viewing_request":
+    case "property_search": {
+      const result = await handlePropertySearch(input.userMessage, history);
+      response = result.text;
+      if (result.searchCalls > 0) {
+        toolCalls = [
+          {
+            name: "search_listings",
+            args: { invocation_count: result.searchCalls },
+          },
+        ];
+      }
+      break;
+    }
     case "chitchat": {
-      // TODO(v0.2): dedicated agents for these intents. For v0.1 the FAQ
-      // agent handles them as a fallback — its system prompt is generic
-      // enough that it produces reasonable responses for chitchat and
-      // out-of-scope requests.
-      const retrieved =
-        router.intent === "chitchat"
-          ? []
-          : await retrieve(input.userMessage, RAG_TOP_K);
+      response = await handleSmalltalk(input.userMessage, history);
+      break;
+    }
+    case "viewing_request": {
+      // TODO(v0.2): dedicated viewing agent with calendar integration.
+      // For v0.1 we use the FAQ agent + RAG retrieval — knowledge-base/
+      // 02-viewing-process.md already covers the procedure questions.
+      const retrieved = await retrieve(input.userMessage, RAG_TOP_K);
       retrievedForLog = retrieved.map((r) => ({
         source: r.source,
         heading: r.heading,
