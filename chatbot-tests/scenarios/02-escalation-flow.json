@@ -1,0 +1,18 @@
+{
+  "id": "02-escalation-flow",
+  "description": "Frustrated complaint — should route to complaint agent, follow 4-step acknowledge flow, not promise compensation, request ticket metadata.",
+  "language": "cs",
+  "turns": [
+    {
+      "user": "Volal jsem podpoře třikrát minulý týden a nikdo se neozval! Toto je absolutně nepřijatelné.",
+      "expect": {
+        "router_intent": "complaint",
+        "router_confidence_min": 0.85,
+        "guard_verdict": "safe",
+        "response_must_not_mention": ["vrátíme", "kompenzace", "refund"],
+        "response_must_mention_any": ["ticket", "kolega", "podpor"],
+        "tool_calls_allowed": ["create_support_ticket"]
+      }
+    }
+  ]
+}

@@ -2,8 +2,8 @@
 
 > End-to-end **Quality Engineering** stack for the Czech real-estate
 > platform [úlovdomov.cz](https://www.ulovdomov.cz) — production Playwright
-> test automation **and** a multi-agent AI customer-support chatbot
-> for the same platform.
+> test automation, a multi-agent AI customer-support chatbot, **and the
+> SDET-discipline QA suite that qualifies the chatbot.**
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-E2E-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
@@ -16,8 +16,10 @@
 
 ## What this repo is
 
-This is a **dual-module portfolio piece** that demonstrates full-stack
-quality engineering for a single real-world platform:
+This is a **three-module portfolio piece** that demonstrates full-stack
+quality engineering for a single real-world platform — covering both
+the legacy web product and the multi-agent AI surface that 2026 platforms
+are adding on top:
 
 ### Module 1 — Playwright E2E test suite (`./` root + `tests/`)
 
@@ -38,10 +40,26 @@ A concept multi-agent LLM chatbot for the same platform:
 - **Intent router** (gpt-4o-mini, JSON-forced output, 5-class classifier)
 - **FAQ agent** with **RAG** retrieval over a Czech/Slovak knowledge base
 - **Escalation handler** with **tool calling** (mock backend ticket system)
-- **Conversation logger** + post-hoc analyzer (RAGAS-style faithfulness)
-- **Azure OpenAI deployment-ready** (one-line config switch)
+- **Guard layer** — pre-router prompt-injection defense (LlamaFirewall pattern)
+- **Hierarchical memory** + **cost tracker** + **OTel GenAI span emitter**
+- **Multi-backend LLM client** — GitHub Models / Azure OpenAI / OpenAI direct,
+  switched via `.env` with zero code changes
 
 Details in [`chatbot/README.md`](chatbot/README.md).
+
+### Module 3 — Chatbot QA suite (`chatbot-tests/`)
+
+The independent SDET-discipline test suite that qualifies Module 2:
+
+- **Golden-transcript regression** — JSON scenarios with labeled intents,
+  expected RAG sources, guard verdicts, token caps
+- **Adversarial corpus** — jailbreak / injection templates the guard layer
+  must block 100% with 0 LLM tokens spent
+- **Cost & latency gates** — p95 latency and $/turn drift thresholds
+- **Blackbox by design** — depends only on `chatbot`'s public
+  `processTurn()` API; internal refactors of agents/RAG/tools don't break it
+
+Details in [`chatbot-tests/README.md`](chatbot-tests/README.md).
 
 ---
 

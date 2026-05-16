@@ -35,8 +35,9 @@ patterns used in production-grade LLM applications:
   OpenAI / Azure OpenAI pricing tables
 - **Hierarchical conversation memory** — sliding window + rolling summary
   (Mem0 / LangChain ConversationSummaryBufferMemory pattern)
-- **Azure OpenAI deployment-ready** — single-line config switch between OpenAI
-  direct and Azure OpenAI Service
+- **Multi-backend LLM client** — single `.env` switch between three providers:
+  **GitHub Models** (Microsoft's free gateway to Azure AI), **Azure OpenAI
+  Service** (production), and **OpenAI direct** (fallback). Zero code changes.
 
 ---
 
@@ -118,6 +119,41 @@ Pricing: $0.15 / 1M input · $0.60 / 1M output (gpt-4o-mini, OpenAI &
 [Azure mirror](https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/)
 as of June 2026). Numbers are reported, not asserted in CI — see
 [`docs/architecture.md` § "Cost & latency engineering"](docs/architecture.md).
+
+## Testing strategy — QA discipline applied to LLM
+
+The chatbot is treated as a system under test, not a black box. The testing
+pyramid mirrors what you'd build for any production application — adapted for
+the non-deterministic surface that LLM responses introduce.
+
+| Layer | What it tests | How | Cost |
+|---|---|---|---|
+| **Unit** | Deterministic logic: guard regex patterns, memory sliding window, OTel span attributes, cost calculation | Vitest, no LLM calls | $0 |
+| **Labeled-set** | Router intent classification accuracy against a hand-labeled corpus | Vitest with real LLM, threshold gate ≥ 0.85 | ~$0.001 / run |
+| **Integration / smoke** | Full pipeline: guard → router → RAG → agent → log → span emit | [`src/eval/smoke-test.ts`](src/eval/smoke-test.ts) — exercises 3 representative turns end-to-end | ~$0.001 / run |
+| **RAGAS faithfulness** | Answer groundedness vs retrieved context per turn | [`src/eval/ragas-faithfulness.ts`](src/eval/ragas-faithfulness.ts) | ~$0.005 / 10 turns |
+| **Adversarial** | Guard layer against jailbreak templates and prompt injection | [`src/guard.test.ts`](src/guard.test.ts) — 15 cases, 6 jailbreaks + 6 legitimate + 3 runtime | $0 (lexical) |
+| **Cost/latency regression** | p50/p95 latency, $/turn averages over rolling log | [`src/conversation-log-analyzer.ts`](src/conversation-log-analyzer.ts) | $0 |
+
+Current test counts: **25 passing unit tests** (guard, memory, observability,
+router). Adding new prompts goes through the same gate — failing tests block
+the prompt change.
+
+### Sample smoke-test artifact (real run, 2026-06-15, GitHub Models backend)
+
+3 turns exercising FAQ + escalation + jailbreak. Saved in
+[`examples/smoke-test-2026-06-15-github-models.txt`](examples/smoke-test-2026-06-15-github-models.txt).
+Highlights:
+
+- Turn 1 (FAQ): router intent `faq` (conf 0.95), RAG hit `01-pricing.md`,
+  Czech/Slovak response with correct pricing, $0.0005, 4s warm latency
+- Turn 2 (escalation): router intent `complaint` (conf 0.99), 4-step ack
+  flow, asks for missing ticket metadata, $0.0005
+- Turn 3 (jailbreak): **guard blocked in 2 ms with 0 LLM tokens** —
+  fixed refusal returned, downstream agents never invoked
+
+This is the kind of evidence you'd want from any QA-disciplined system —
+deterministic invariants on a non-deterministic surface.
 
 ## Observability
 
@@ -240,9 +276,14 @@ ulovdomov-chatbot/
 ### Prerequisites
 
 - Node.js 20+
-- One of:
-  - OpenAI API key — get at [platform.openai.com](https://platform.openai.com/api-keys)
-  - Azure OpenAI deployment ([approval required](https://aka.ms/oai/access))
+- One of (in order of friction):
+  - **GitHub Personal Access Token** — recommended for demo / portfolio.
+    Free, no Azure subscription needed, OpenAI-compatible endpoint at
+    `https://models.inference.ai.azure.com`. Generate at
+    [github.com/settings/tokens](https://github.com/settings/tokens).
+  - **OpenAI API key** — get at [platform.openai.com](https://platform.openai.com/api-keys)
+  - **Azure OpenAI deployment** ([PAYG subscription required](docs/azure-deployment.md);
+    Free tier explicitly cannot deploy models)
 
 ### Setup
 
@@ -290,10 +331,23 @@ Chceš pomoc s přidáním inzerátu?
 
 ---
 
-## Azure OpenAI deployment
+## Backend deployment paths
 
-The client at `src/llm-client.ts` is **endpoint-agnostic**. To switch from
-OpenAI direct to Azure OpenAI, set these in `.env`:
+The client at `src/llm-client.ts` is **multi-backend** — backend selection is
+purely by `.env` with this priority order:
+
+### 1. GitHub Models (default for demo / portfolio)
+
+```bash
+GITHUB_MODELS_TOKEN=ghp_...
+GITHUB_MODELS_CHAT_MODEL=gpt-4o-mini
+GITHUB_MODELS_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+Free, OpenAI-compatible, runs on Microsoft infrastructure. Rate-limited to
+~15 RPM on the free tier — perfect for demo, not production.
+
+### 2. Azure OpenAI Service (production)
 
 ```bash
 AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com
@@ -303,10 +357,18 @@ AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o-mini       # your deployment name
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small
 ```
 
-The client auto-detects Azure config and switches `OpenAI` → `AzureOpenAI`. No
-code changes needed.
+Pay-as-you-go subscription required — Azure Free tier explicitly blocks
+deployment.
 
-For full Azure setup walkthrough see [`docs/azure-deployment.md`](docs/azure-deployment.md).
+### 3. OpenAI direct (fallback)
+
+```bash
+OPENAI_API_KEY=sk-proj-...
+```
+
+The client auto-detects which backend to use. No code changes needed for the
+switch. For full Azure setup walkthrough see
+[`docs/azure-deployment.md`](docs/azure-deployment.md).
 
 ---
 

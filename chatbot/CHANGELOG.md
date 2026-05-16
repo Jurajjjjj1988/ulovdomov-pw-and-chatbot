@@ -6,6 +6,31 @@ project loosely adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-06-15 evening session)
+
+- **GitHub Models** as a third LLM backend in
+  [`src/llm-client.ts`](src/llm-client.ts). Priority order is GitHub Models →
+  Azure → OpenAI direct, picked by `.env` alone. Enables free Microsoft-branded
+  inference for demo / portfolio while keeping the production Azure path intact.
+- **Smoke test script** [`src/eval/smoke-test.ts`](src/eval/smoke-test.ts)
+  exercising the full pipeline (guard → router → RAG → agent → cost) with 3
+  representative turns. Output committed as a portfolio artifact at
+  [`examples/smoke-test-2026-06-15-github-models.txt`](examples/smoke-test-2026-06-15-github-models.txt).
+- **Azure verify script** [`src/eval/verify-azure.ts`](src/eval/verify-azure.ts)
+  — minimal chat + embedding call against an Azure deployment, used to
+  reproduce / diagnose the Azure Free tier deployment gate.
+
+### Changed
+
+- [`docs/azure-deployment.md`](docs/azure-deployment.md) restructured into
+  Path A (GitHub Models, free) + Path B (Azure OpenAI, production), with the
+  Free-subscription gate documented inline based on a real reproduction.
+- README quick-start prerequisites now list GitHub PAT as the recommended
+  zero-friction option ahead of OpenAI / Azure keys.
+- README adds **Testing strategy** section explaining the QA-applied-to-LLM
+  layer cake (unit / labeled-set / integration / RAGAS / adversarial /
+  cost-latency regression).
+
 ### Planned for v0.2 (week of 2026-06-22)
 
 - Dedicated viewing-request agent (currently falls through to FAQ)

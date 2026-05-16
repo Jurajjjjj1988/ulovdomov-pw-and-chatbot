@@ -24,11 +24,24 @@ interface ModelPricing {
 }
 
 const CHAT_PRICING: Record<string, ModelPricing> = {
-  // gpt-4o-mini — the default for this project. Cheapest production-grade
-  // chat completion model in mid-2026.
+  // gpt-5.4 family — current Azure AI Foundry catalog (June 2026 refresh).
+  // gpt-5.4-nano is the cheapest production-grade chat model; perfect fit for
+  // FAQ-style customer support. Pricing assumed in line with prior generation
+  // gap; refine when Microsoft publishes the official Azure pricing page.
+  "gpt-5.4-nano": { inputPer1M: 0.05, outputPer1M: 0.2 },
+  "gpt-5.4-mini": { inputPer1M: 0.1, outputPer1M: 0.4 },
+  "gpt-5.4": { inputPer1M: 1.25, outputPer1M: 10 },
+  // gpt-5 series (legacy / fallback)
+  "gpt-5-mini": { inputPer1M: 0.1, outputPer1M: 0.4 },
+  "gpt-5-nano": { inputPer1M: 0.05, outputPer1M: 0.2 },
+  "gpt-5": { inputPer1M: 1.25, outputPer1M: 10 },
+  // Mistral models via Azure Foundry serverless. Small / cheap / multilingual.
+  "ministral-3b": { inputPer1M: 0.04, outputPer1M: 0.04 },
+  "mistral-small-2503": { inputPer1M: 0.1, outputPer1M: 0.3 },
+  "mistral-large-2411": { inputPer1M: 2, outputPer1M: 6 },
+  // gpt-4o family — kept for backward compatibility with older deployments.
   "gpt-4o-mini": { inputPer1M: 0.15, outputPer1M: 0.6 },
-  // gpt-4o — when higher quality is needed (currently unused, kept for future).
-  "gpt-4o": { inputPer1M: 2.5, outputPer1M: 10.0 },
+  "gpt-4o": { inputPer1M: 2.5, outputPer1M: 10 },
   // o1-mini — reasoning model, much more expensive output.
   "o1-mini": { inputPer1M: 1.1, outputPer1M: 4.4 },
 };
@@ -36,6 +49,11 @@ const CHAT_PRICING: Record<string, ModelPricing> = {
 const EMBEDDING_PRICING: Record<string, ModelPricing> = {
   "text-embedding-3-small": { inputPer1M: 0.02, outputPer1M: 0 },
   "text-embedding-3-large": { inputPer1M: 0.13, outputPer1M: 0 },
+  // Cohere multilingual embeddings via Azure Foundry serverless deployment —
+  // ~100 languages including Czech/Slovak with stronger cross-language
+  // semantic search than OpenAI's English-centric embeddings.
+  "cohere-embed-v3-multilingual": { inputPer1M: 0.1, outputPer1M: 0 },
+  "cohere-embed-v4": { inputPer1M: 0.12, outputPer1M: 0 },
 };
 
 /**
@@ -43,7 +61,7 @@ const EMBEDDING_PRICING: Record<string, ModelPricing> = {
  * model. We don't carry a separate table; if you need exact billing, pull
  * the real prices from the Azure cost-management API at run-time.
  */
-const AZURE_MULTIPLIER = 1.0;
+const AZURE_MULTIPLIER = 1;
 
 export interface TokenUsage {
   prompt: number;
@@ -58,13 +76,17 @@ export interface CostBreakdown {
   costUsd: number;
 }
 
+// Fallback used when an unknown model is requested. Set high enough that a
+// typo doesn't silently underestimate cost in dashboards.
+const UNKNOWN_MODEL_FALLBACK: ModelPricing = { inputPer1M: 0.15, outputPer1M: 0.6 };
+
 /** Estimate cost in USD for a single chat completion. */
 export function estimateChatCostUsd(
   model: string,
   usage: TokenUsage,
   backend: Backend = "openai",
 ): number {
-  const pricing = CHAT_PRICING[model] ?? CHAT_PRICING["gpt-4o-mini"]!;
+  const pricing = CHAT_PRICING[model] ?? UNKNOWN_MODEL_FALLBACK;
   const multiplier = backend === "azure" ? AZURE_MULTIPLIER : 1;
   const inputCost = (usage.prompt / 1_000_000) * pricing.inputPer1M;
   const outputCost = (usage.completion / 1_000_000) * pricing.outputPer1M;
@@ -77,7 +99,7 @@ export function estimateEmbeddingCostUsd(
   tokens: number,
   backend: Backend = "openai",
 ): number {
-  const pricing = EMBEDDING_PRICING[model] ?? EMBEDDING_PRICING["text-embedding-3-small"]!;
+  const pricing = EMBEDDING_PRICING[model] ?? UNKNOWN_MODEL_FALLBACK;
   const multiplier = backend === "azure" ? AZURE_MULTIPLIER : 1;
   return (tokens / 1_000_000) * pricing.inputPer1M * multiplier;
 }

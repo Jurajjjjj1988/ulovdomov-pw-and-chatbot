@@ -1,16 +1,75 @@
-# Deploying on Azure OpenAI Service
+# Deploying on Azure (and the GitHub Models gateway path)
 
-Step-by-step walkthrough for moving from OpenAI direct (local development)
-to Azure OpenAI Service (production deployment). The codebase needs **zero
-changes** — only `.env` configuration.
+This project supports **three LLM backends** with zero code changes — picked
+by `.env` alone. Priority order (set by [`src/llm-client.ts`](../src/llm-client.ts)):
+
+1. **GitHub Models** — Microsoft's free "try-before-Azure" gateway
+2. **Azure OpenAI Service** — production target
+3. **OpenAI direct** — local development fallback
+
+If you're prototyping or building a portfolio piece, start with **GitHub Models**
+— it's the same LLM catalog as Azure, runs on Microsoft infrastructure, and
+costs $0. When you graduate to production, the swap to Azure is purely a
+`.env` change.
 
 ---
 
-## Prerequisites
+## Path A — GitHub Models (free, no Azure subscription needed)
 
-1. **Azure subscription**
-   - Free tier works for development: [azure.microsoft.com/free](https://azure.microsoft.com/free)
-   - Production: pay-as-you-go subscription on a Microsoft Customer Agreement
+### Why this exists
+
+Microsoft markets GitHub Models as the *gateway to Azure AI* — same
+`https://models.inference.ai.azure.com` infrastructure, same OpenAI-compatible
+API, same model catalog (`gpt-4o-mini`, `Phi-4`, `DeepSeek-R1`, `Llama`,
+`Mistral`, etc.). The only differences vs Azure-direct:
+
+- **Auth** — GitHub Personal Access Token instead of Azure API key
+- **Rate limits** — ~15 RPM / 150 RPD on the free tier (enough for demo,
+  not enough for production traffic)
+- **Region** — Microsoft picks; you don't
+
+### Setup (5 minutes)
+
+1. Generate a Personal Access Token at
+   [github.com/settings/tokens](https://github.com/settings/tokens) →
+   **Tokens (classic)** → **Generate new token (classic)**.
+   Name: `<project>-models`, expiration: whatever fits, **no scopes needed**.
+2. Add to `.env`:
+   ```bash
+   GITHUB_MODELS_TOKEN=ghp_...
+   GITHUB_MODELS_CHAT_MODEL=gpt-4o-mini
+   GITHUB_MODELS_EMBEDDING_MODEL=text-embedding-3-small
+   ```
+3. Build the RAG index and run a smoke test:
+   ```bash
+   npm run ingest:kb
+   npx tsx src/eval/smoke-test.ts
+   ```
+
+### Verified working
+
+Smoke test transcript from 2026-06-15 against GitHub Models is in
+[`examples/smoke-test-2026-06-15-github-models.txt`](../examples/smoke-test-2026-06-15-github-models.txt).
+Highlights:
+
+- 3 turns: FAQ + escalation + jailbreak attempt
+- Guard layer blocks the jailbreak in 2 ms with 0 LLM tokens spent
+- Total cost: $0.001 across all 3 turns
+- Average latency: ~3.2 s/turn (warm); ~21 s/turn (cold-start first call)
+
+---
+
+## Path B — Azure OpenAI Service (production)
+
+### Prerequisites
+
+1. **Azure subscription** — **Pay-as-you-go required**.
+   The Azure Free subscription tier explicitly cannot deploy Azure OpenAI
+   or Marketplace partner models. Documented at
+   [Foundry partner Marketplace docs](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/configure-marketplace)
+   and [Quota of Azure OpenAI during free trial](https://learn.microsoft.com/en-us/answers/questions/2153889/quota-of-azure-open-ai-(gpt)-during-free-trial):
+   *"Free Trial subscriptions aren't eligible for limit or quota increases."*
+   This is a hard gate. Upgrade to PAYG first, then proceed.
 
 2. **Azure OpenAI Service access**
    - Apply at [aka.ms/oai/access](https://aka.ms/oai/access)

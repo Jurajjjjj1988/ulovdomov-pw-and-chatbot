@@ -30,6 +30,7 @@ import { dirname } from "node:path";
 import type { IntentResult } from "./agents/intent-router.js";
 import type { RetrievedChunk } from "./rag/retriever.js";
 import type { GuardResult } from "./guard.js";
+import type { Backend } from "./llm-client.js";
 
 export interface ConversationTurn {
   ts: string;
@@ -46,8 +47,8 @@ export interface ConversationTurn {
   costUsd: number;
   /** Model identifier (deployment name on Azure, model name on OpenAI direct). */
   model: string;
-  /** "openai" or "azure" — captured for billing reconciliation. */
-  backend: "openai" | "azure";
+  /** "openai", "azure", or "github-models" — captured for billing reconciliation. */
+  backend: Backend;
   /** Guard verdict + reasons. See guard.ts. */
   guard: GuardResult;
 }

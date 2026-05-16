@@ -1,0 +1,18 @@
+{
+  "name": "ulovdomov-chatbot-tests",
+  "version": "0.1.0",
+  "description": "Module 3 — SDET-discipline QA suite for the úlovdomov chatbot. Golden-transcript regression, adversarial corpus, cost/latency gates.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "replay": "tsx replay.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
