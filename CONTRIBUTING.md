@@ -124,13 +124,12 @@ change one:
 
 ---
 
-## Not affiliated
+## Provenance
 
-This repository is a portfolio project and is **not affiliated with
-úlovdomov.cz**. All trademarks belong to their respective owners. Test
-selectors, test data, and chatbot knowledge base reflect publicly
-available information from the live site for educational and
-demonstration purposes.
+The Playwright test suite originated from real testing engagements for
+úlovdomov.cz. The chatbot module is a portfolio piece built independently
+to demonstrate AI / LLM architecture patterns on the same domain. All
+trademarks belong to their respective owners.
 
-If you represent úlovdomov.cz and want this repo taken down or modified,
-open an issue or contact me directly via the email in [`LICENSE`](LICENSE).
+If you represent úlovdomov.cz and want this repo modified, open an issue
+or contact me directly via the email in [`LICENSE`](LICENSE).

@@ -452,9 +452,12 @@ within 1-2 weeks of a green light.
 
 MIT — see [LICENSE](LICENSE).
 
-Not affiliated with úlovdomov.cz or its operator. All trademarks belong to
-their respective owners. Knowledge base content is publicly available domain
-knowledge for Czech real estate, paraphrased for chatbot grounding.
+Portfolio piece built independently to demonstrate the architecture
+patterns this kind of chatbot needs. Domain knowledge comes from real
+úlovdomov.cz testing engagement on the Playwright module; the knowledge
+base content is publicly available Czech-real-estate domain knowledge
+paraphrased for grounding. All trademarks belong to their respective
+owners.
 
 Built by [Juraj Kapusansky](https://github.com/Jurajjjjj1988) — AI Engineer,
 Bratislava, Slovakia.

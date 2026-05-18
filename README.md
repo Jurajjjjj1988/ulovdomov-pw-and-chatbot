@@ -221,10 +221,10 @@ knowledge base.
 
 MIT — see [LICENSE](LICENSE).
 
-This is a **portfolio project**. Not affiliated with úlovdomov.cz or its
-operator. All trademarks belong to their respective owners. Test selectors,
-test data, and chatbot knowledge base reflect **publicly available** info
-from the live site for educational/demonstration purposes.
+The **Playwright test suite** was originally developed as part of real
+testing engagements for úlovdomov.cz. The **chatbot module** is a portfolio
+piece built independently to demonstrate AI / LLM architecture patterns on
+the same domain. All trademarks belong to their respective owners.
 
 Built by **[Juraj Kapusansky](https://github.com/Jurajjjjj1988)** —
 AI Quality Engineer · Bratislava, Slovakia.

@@ -7,7 +7,8 @@ This is **Module 1** of the [ulovdomov-pw-and-chatbot](../README.md) suite.
 The companion [Module 2](../chatbot/README.md) is a multi-agent AI customer
 support chatbot for the same platform.
 
-> ⚠️ **Portfolio DEMO project.** Not affiliated with úlovdomov.cz.
+> Production-grade E2E suite originally developed for úlovdomov.cz testing
+> engagements. All trademarks belong to their respective owners.
 
 ---
 

@@ -12,10 +12,11 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
-This is a portfolio / demo project. It is not affiliated with úlovdomov.cz
-or its operator; all trademarks belong to their respective owners. Test
-selectors, test data, and chatbot knowledge base reflect publicly available
-information from the live site for educational and demonstration purposes.
+The Playwright test suite in this repository was originally developed as
+part of real testing engagements for úlovdomov.cz. The companion chatbot
+module is a portfolio piece built independently to demonstrate AI / LLM
+architecture patterns on the same domain. All trademarks belong to their
+respective owners.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
