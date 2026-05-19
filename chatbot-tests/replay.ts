@@ -20,7 +20,33 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const SCENARIO_DIR = "scenarios";
-const CHATBOT_INDEX = resolve("../chatbot/src/index.ts");
+const CHATBOT_ROOT = resolve("../chatbot");
+const CHATBOT_INDEX = resolve(CHATBOT_ROOT, "src/index.ts");
+
+// Load the chatbot's .env BEFORE importing the chatbot package — otherwise
+// llm-client.ts sees an empty process.env (it calls `import "dotenv/config"`
+// which only loads from cwd; when this runner is invoked from chatbot-tests/,
+// cwd has no .env and no backend gets detected). Minimal parser avoids
+// pulling `dotenv` as a chatbot-tests dependency.
+function loadChatbotEnv(): void {
+  const envPath = resolve(CHATBOT_ROOT, ".env");
+  let raw: string;
+  try {
+    raw = readFileSync(envPath, "utf8");
+  } catch {
+    return; // .env optional — runner reports a clearer error if no backend
+  }
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const value = trimmed.slice(eq + 1).trim();
+    if (!(key in process.env)) process.env[key] = value;
+  }
+}
+loadChatbotEnv();
 
 interface ScenarioExpect {
   guard_verdict?: "safe" | "suspicious" | "malicious";

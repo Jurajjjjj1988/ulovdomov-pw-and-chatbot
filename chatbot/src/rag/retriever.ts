@@ -15,9 +15,16 @@
  */
 
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { getChatClient, getEmbeddingModel } from "../llm-client.js";
+
+// Resolve the index path relative to THIS module rather than process.cwd() —
+// callers in sibling packages (e.g. chatbot-tests/) shouldn't need to chdir
+// into chatbot/ before invoking the retriever.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const CHATBOT_ROOT = resolve(__dirname, "..", "..");
 
 export interface KnowledgeChunk {
   source: string;
@@ -33,7 +40,7 @@ export interface RetrievedChunk {
   score: number;
 }
 
-const INDEX_PATH = "knowledge-base/.index.json";
+const INDEX_PATH = resolve(CHATBOT_ROOT, "knowledge-base/.index.json");
 
 let cachedIndex: KnowledgeChunk[] | null = null;
 
