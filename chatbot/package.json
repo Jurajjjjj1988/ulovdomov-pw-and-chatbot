@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "tsx src/index.ts",
     "chat": "tsx src/cli.ts",
+    "serve": "tsx src/server.ts",
     "analyze:logs": "tsx src/conversation-log-analyzer.ts",
     "eval:faithfulness": "tsx src/eval/ragas-faithfulness.ts",
     "ingest:kb": "tsx src/rag/ingest.ts",
@@ -30,14 +31,15 @@
   "author": "Juraj Kapusansky",
   "license": "MIT",
   "dependencies": {
-    "openai": "^4.73.1",
+    "chalk": "^5.4.1",
     "dotenv": "^16.4.7",
-    "chalk": "^5.4.1"
+    "fastify": "^5.8.5",
+    "openai": "^4.73.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "typescript": "^5.7.2",
     "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },
   "engines": {
