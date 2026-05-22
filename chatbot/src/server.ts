@@ -23,6 +23,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 
 import { processTurn } from "./index.js";
 import { detectBackend, getChatModel } from "./llm-client.js";
@@ -60,8 +61,40 @@ const app = Fastify({
   trustProxy: true, // Azure App Service / Container Apps front-end TLS
 });
 
+// ─── Rate limiting ─────────────────────────────────────────────────────────
+// Global default: 30 req/min per IP. /chat tightened to abuse-friendly limits
+// keyed on conversationId (if provided) — falls back to IP. Health checks
+// stay unlimited so Container Apps probes never trip.
+//
+// For multi-instance deploys, set `RATE_LIMIT_REDIS_URL` to back the store on
+// Redis (see @fastify/rate-limit docs); without it the limits are per-pod.
+await app.register(rateLimit, {
+  global: false, // opt-in per route — keeps /health unlimited
+  max: 30,
+  timeWindow: "1 minute",
+  keyGenerator: (request) => request.ip,
+  errorResponseBuilder: (_req, context) => ({
+    error: "rate_limited",
+    message: `Too many requests. Retry in ${Math.ceil(context.ttl / 1000)}s.`,
+    statusCode: 429,
+  }),
+});
+
 // ─── POST /chat ─────────────────────────────────────────────────────────────
-app.post("/chat", async (request: FastifyRequest, reply: FastifyReply) => {
+app.post("/chat", {
+  config: {
+    rateLimit: {
+      max: 20,
+      timeWindow: "1 minute",
+      // Key on conversationId when present (per-session cap) so a shared NAT
+      // / Container Apps front-end IP doesn't get throttled across users.
+      keyGenerator: (request) => {
+        const body = request.body as { conversationId?: string } | undefined;
+        return body?.conversationId ?? request.ip;
+      },
+    },
+  },
+}, async (request: FastifyRequest, reply: FastifyReply) => {
   const body = request.body as ChatRequestBody | undefined;
   if (!body || typeof body.message !== "string" || body.message.trim().length === 0) {
     return reply.code(400).send({ error: "missing or empty 'message' field" });
