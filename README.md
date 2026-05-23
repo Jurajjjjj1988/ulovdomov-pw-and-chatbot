@@ -156,35 +156,53 @@ ulovdomov-qe-suite/
 │   ├── package.json
 │   └── tsconfig.json
 │
-└── Module 2 — AI Chatbot
-    └── chatbot/                         ← all chatbot code under here
-        ├── README.md                    ← chatbot module docs
-        ├── .env.example
-        ├── package.json                 ← chatbot has its own deps
-        ├── tsconfig.json
-        ├── src/
-        │   ├── llm-client.ts            ← endpoint-agnostic OpenAI client
-        │   ├── prompts/                 ← system prompts (markdown)
-        │   ├── agents/                  ← intent router, FAQ, escalation
-        │   ├── rag/                     ← retrieval-augmented generation
-        │   ├── tools/                   ← LLM-callable mock backend tools
-        │   ├── conversation-log.ts      ← JSONL append-only logger
-        │   └── conversation-log-analyzer.ts
-        ├── knowledge-base/              ← Czech/Slovak RAG sources
-        ├── docs/
-        │   ├── architecture.md
-        │   ├── prompts-iteration-log.md
-        │   └── azure-deployment.md
-        └── examples/
-            └── sample-conversations.md
+├── Module 2 — AI Chatbot
+│   └── chatbot/                         ← all chatbot code under here
+│       ├── README.md                    ← chatbot module docs
+│       ├── .env.example
+│       ├── package.json                 ← chatbot has its own deps
+│       ├── tsconfig.json
+│       ├── Dockerfile                   ← deployable image (HTTP server)
+│       ├── src/
+│       │   ├── llm-client.ts            ← multi-backend (GitHub Models / Azure / OpenAI)
+│       │   ├── server.ts                ← Fastify HTTP wrapper + rate limiting
+│       │   ├── guard.ts                 ← prompt-injection defense
+│       │   ├── conversation-memory.ts   ← sliding window + rolling summary
+│       │   ├── cost-tracker.ts          ← per-turn USD estimation
+│       │   ├── observability.ts         ← OTel GenAI span emitter
+│       │   ├── prompts/                 ← system prompts (markdown)
+│       │   ├── agents/                  ← intent router, FAQ, escalation, smalltalk
+│       │   ├── rag/                     ← retrieval-augmented generation
+│       │   ├── tools/                   ← LLM-callable mock backend tools
+│       │   ├── eval/                    ← smoke test + RAGAS faithfulness
+│       │   ├── conversation-log.ts      ← JSONL append-only logger
+│       │   └── conversation-log-analyzer.ts
+│       ├── knowledge-base/              ← Czech/Slovak RAG sources
+│       ├── docs/
+│       │   ├── architecture.md
+│       │   ├── prompts-iteration-log.md
+│       │   └── azure-deployment.md
+│       └── examples/
+│           └── sample-conversations.md
+│
+└── Module 3 — Chatbot QA Suite
+    └── chatbot-tests/                   ← independent SDET-discipline test suite
+        ├── README.md                    ← Module 3 docs
+        ├── package.json
+        ├── replay.ts                    ← scenario runner with real assertions
+        └── scenarios/                   ← golden-transcript JSON fixtures
+            ├── 01-faq-pricing.json
+            ├── 02-escalation-flow.json
+            └── 03-adversarial-jailbreak.json
 ```
 
-The two modules have **separate `package.json` / `node_modules`** to keep
-their dependency trees independent — the Playwright suite doesn't pull
-in the OpenAI SDK, and the chatbot doesn't pull in Playwright. They share
-nothing at the JS level; the shared artifact is the **domain knowledge**
-about úlovdomov.cz captured in tests, page objects, and the chatbot's
-knowledge base.
+The three modules have **separate `package.json` / `node_modules`** to keep
+their dependency trees independent — the Playwright suite doesn't pull in
+the OpenAI SDK, the chatbot doesn't pull in Playwright, and Module 3 stays
+free of runtime deps by depending only on the chatbot's public
+`processTurn()` API. They share nothing at the JS level; the shared
+artifact is the **domain knowledge** about úlovdomov.cz captured in tests,
+page objects, and the chatbot's knowledge base.
 
 ---
 
