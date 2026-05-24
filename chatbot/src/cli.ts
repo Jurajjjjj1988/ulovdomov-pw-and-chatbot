@@ -12,26 +12,29 @@
  * conversation log so you can `npm run analyze:logs` afterward.
  */
 
-import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 
 import chalk from "chalk";
 
-import { processTurn } from "./index.js";
+import { ChatSession } from "./chat-session.js";
 import { detectBackend } from "./llm-client.js";
 import { formatCostUsd } from "./cost-tracker.js";
 
+function formatBackend(backend: ReturnType<typeof detectBackend>): string {
+  if (backend === "azure") return "Azure OpenAI";
+  if (backend === "github-models") return "GitHub Models";
+  return "OpenAI direct";
+}
+
 async function main(): Promise<void> {
   const backend = detectBackend();
-  console.log(chalk.bold.cyan(`\n🤖 úlovdomov chatbot — interactive CLI`));
-  console.log(chalk.gray(`   LLM backend: ${backend === "azure" ? "Azure OpenAI" : "OpenAI direct"}`));
-  console.log(chalk.gray(`   Conversation ID: ${randomUUID().slice(0, 8)}…`));
-  console.log(chalk.gray(`   Type your message and press Enter. Ctrl-C to exit.\n`));
+  const session = new ChatSession();
 
-  const conversationId = randomUUID();
-  const history: Array<{ role: "user" | "assistant"; content: string }> = [];
-  let turn = 1;
+  console.log(chalk.bold.cyan(`\n🤖 úlovdomov chatbot — interactive CLI`));
+  console.log(chalk.gray(`   LLM backend: ${formatBackend(backend)}`));
+  console.log(chalk.gray(`   Conversation ID: ${session.conversationId.slice(0, 8)}…`));
+  console.log(chalk.gray(`   Type your message and press Enter. Ctrl-C to exit.\n`));
 
   const rl = createInterface({ input: stdin, output: stdout });
 
@@ -40,12 +43,7 @@ async function main(): Promise<void> {
     if (!userMessage.trim()) continue;
 
     try {
-      const { response, intent, record } = await processTurn({
-        userMessage,
-        conversationId,
-        turn,
-        history,
-      });
+      const { response, intent, record } = await session.send(userMessage);
 
       // Traces
       console.log(
@@ -72,10 +70,6 @@ async function main(): Promise<void> {
       // Response
       console.log(chalk.bold.green("🤖 "));
       console.log(`${response}\n`);
-
-      history.push({ role: "user", content: userMessage });
-      history.push({ role: "assistant", content: response });
-      turn++;
     } catch (err) {
       console.error(chalk.red("\nError:"), err instanceof Error ? err.message : String(err));
       console.log();
@@ -83,7 +77,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: unknown) => {
+try {
+  await main();
+} catch (err) {
   console.error(err);
   process.exit(1);
-});
+}
