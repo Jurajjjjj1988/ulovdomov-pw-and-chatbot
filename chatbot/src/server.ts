@@ -24,11 +24,22 @@ import { fileURLToPath } from "node:url";
 
 import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
 import rateLimit from "@fastify/rate-limit";
+import fastifySwagger from "@fastify/swagger";
+import fastifySwaggerUi from "@fastify/swagger-ui";
 
 import { processTurn } from "./index.js";
 import { detectBackend, getChatModel } from "./llm-client.js";
 import { ConversationMemory } from "./conversation-memory.js";
 import { formatCostUsd } from "./cost-tracker.js";
+import {
+  ChatRequestSchema,
+  ChatResponseSchema,
+  HealthResponseSchema,
+  ReadyResponseSchema,
+  MetricsResponseSchema,
+  ErrorResponseSchema,
+  type ChatRequest,
+} from "./schemas.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CHATBOT_ROOT = resolve(__dirname, "..");
@@ -61,6 +72,43 @@ const app = Fastify({
   trustProxy: true, // Azure App Service / Container Apps front-end TLS
 });
 
+// ─── OpenAPI 3.1 + Swagger UI ──────────────────────────────────────────────
+// Schema-first per 2026 fastify-swagger pattern. Same TypeBox schemas drive
+// runtime validation (Ajv) AND the generated /openapi.json. Swagger UI is
+// mounted at /docs. In production, gate behind basic auth or a feature flag
+// if the public surface should stay opaque.
+await app.register(fastifySwagger, {
+  openapi: {
+    openapi: "3.1.0",
+    info: {
+      title: "úlovdomov chatbot HTTP API",
+      version: "0.2.0",
+      description:
+        "Multi-agent customer-support chatbot for úlovdomov.cz — Czech / Slovak " +
+        "language, multi-backend LLM (Azure OpenAI / OpenAI / GitHub Models), " +
+        "RAG-grounded answers, guard-layer prompt-injection defense.",
+    },
+    servers: [
+      { url: "http://localhost:3000", description: "Local dev" },
+      { url: "https://chatbot.example.azurewebsites.net", description: "Production (placeholder)" },
+    ],
+    tags: [
+      { name: "chat", description: "Conversational endpoints" },
+      { name: "health", description: "Liveness / readiness probes" },
+      { name: "metrics", description: "Aggregate observability" },
+    ],
+  },
+});
+
+await app.register(fastifySwaggerUi, {
+  routePrefix: "/docs",
+  uiConfig: {
+    docExpansion: "list",
+    deepLinking: true,
+    tryItOutEnabled: true,
+  },
+});
+
 // ─── Rate limiting ─────────────────────────────────────────────────────────
 // Global default: 30 req/min per IP. /chat tightened to abuse-friendly limits
 // keyed on conversationId (if provided) — falls back to IP. Health checks
@@ -81,74 +129,104 @@ await app.register(rateLimit, {
 });
 
 // ─── POST /chat ─────────────────────────────────────────────────────────────
-app.post("/chat", {
-  config: {
-    rateLimit: {
-      max: 20,
-      timeWindow: "1 minute",
-      // Key on conversationId when present (per-session cap) so a shared NAT
-      // / Container Apps front-end IP doesn't get throttled across users.
-      keyGenerator: (request) => {
-        const body = request.body as { conversationId?: string } | undefined;
-        return body?.conversationId ?? request.ip;
+app.post(
+  "/chat",
+  {
+    schema: {
+      tags: ["chat"],
+      summary: "Run one conversational turn",
+      description:
+        "Pre-router guard → router → branch (FAQ / escalation / property search / " +
+        "smalltalk) → RAG when applicable → log + OTel span. Memory keyed on " +
+        "conversationId persists between turns within one server process.",
+      body: ChatRequestSchema,
+      response: {
+        200: ChatResponseSchema,
+        400: ErrorResponseSchema,
+        429: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+    },
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: "1 minute",
+        keyGenerator: (request) => {
+          const body = request.body as { conversationId?: string } | undefined;
+          return body?.conversationId ?? request.ip;
+        },
       },
     },
   },
-}, async (request: FastifyRequest, reply: FastifyReply) => {
-  const body = request.body as ChatRequestBody | undefined;
-  if (!body || typeof body.message !== "string" || body.message.trim().length === 0) {
-    return reply.code(400).send({ error: "missing or empty 'message' field" });
-  }
+  async (request: FastifyRequest<{ Body: ChatRequest }>, reply: FastifyReply) => {
+    const body = request.body;
+    const conversationId = body.conversationId ?? request.id;
+    const memory = getOrCreateMemory(conversationId);
+    const { recent } = memory.forPrompt();
 
-  const conversationId = body.conversationId ?? request.id;
-  const memory = getOrCreateMemory(conversationId);
-  const { recent } = memory.forPrompt();
+    try {
+      const { response, intent, record } = await processTurn({
+        userMessage: body.message,
+        conversationId,
+        turn: body.turn ?? memory.size() / 2 + 1,
+        history: recent,
+      });
 
-  try {
-    const { response, intent, record } = await processTurn({
-      userMessage: body.message,
-      conversationId,
-      turn: body.turn ?? memory.size() / 2 + 1,
-      history: recent,
-    });
+      memory.append(body.message, response);
+      memory.compactIfNeeded().catch((err: unknown) => {
+        request.log.warn({ err }, "memory.compactIfNeeded failed");
+      });
 
-    memory.append(body.message, response);
-    // Best-effort summary compaction; failures here don't break the turn.
-    memory.compactIfNeeded().catch((err: unknown) => {
-      request.log.warn({ err }, "memory.compactIfNeeded failed");
-    });
-
-    return reply.send({
-      conversationId,
-      response,
-      intent,
-      meta: {
-        guard: record.guard,
-        router: { intent: record.router.intent, confidence: record.router.confidence },
-        retrieval: record.retrieval,
-        tokens: record.tokensUsed,
-        costUsd: record.costUsd,
-        latencyMs: record.latencyMs,
-        backend: record.backend,
-        model: record.model,
-      },
-    });
-  } catch (err) {
-    request.log.error({ err }, "processTurn failed");
-    return reply.code(500).send({
-      error: "internal_error",
-      message: err instanceof Error ? err.message : "unknown error",
-    });
-  }
-});
+      return reply.send({
+        conversationId,
+        response,
+        intent,
+        meta: {
+          guard: record.guard,
+          router: { intent: record.router.intent, confidence: record.router.confidence },
+          retrieval: record.retrieval,
+          tokens: record.tokensUsed,
+          costUsd: record.costUsd,
+          latencyMs: record.latencyMs,
+          backend: record.backend,
+          model: record.model,
+        },
+      });
+    } catch (err) {
+      request.log.error({ err }, "processTurn failed");
+      return reply.code(500).send({
+        error: "internal_error",
+        message: err instanceof Error ? err.message : "unknown error",
+      });
+    }
+  },
+);
 
 // ─── GET /health ────────────────────────────────────────────────────────────
-app.get("/health", async (_req, reply) => {
-  return reply.send({ status: "ok", backend: detectBackend(), model: getChatModel() });
-});
+app.get(
+  "/health",
+  {
+    schema: {
+      tags: ["health"],
+      summary: "Liveness probe",
+      description: "Returns 200 once the orchestrator + LLM client resolve.",
+      response: { 200: HealthResponseSchema },
+    },
+  },
+  async (_req, reply) => {
+    return reply.send({ status: "ok", backend: detectBackend(), model: getChatModel() });
+  },
+);
 
 // ─── GET /ready ─────────────────────────────────────────────────────────────
-app.get("/ready", async (_req, reply) => {
+app.get("/ready", {
+  schema: {
+    tags: ["health"],
+    summary: "Readiness probe",
+    description: "Returns 200 only when RAG index exists AND an LLM backend is configured; 503 otherwise.",
+    response: { 200: ReadyResponseSchema, 503: ReadyResponseSchema },
+  },
+}, async (_req, reply) => {
   const ragReady = existsSync(RAG_INDEX_PATH);
   const backendConfigured =
     Boolean(process.env.GITHUB_MODELS_TOKEN) ||
@@ -166,7 +244,13 @@ app.get("/ready", async (_req, reply) => {
 });
 
 // ─── GET /metrics ───────────────────────────────────────────────────────────
-app.get("/metrics", async (_req, reply) => {
+app.get("/metrics", {
+  schema: {
+    tags: ["metrics"],
+    summary: "Aggregate observability over the conversation log",
+    response: { 200: MetricsResponseSchema },
+  },
+}, async (_req, reply) => {
   const path = resolve(CHATBOT_ROOT, LOG_PATH);
   if (!existsSync(path)) {
     return reply.send({ turns: 0, message: "no conversation log yet" });
