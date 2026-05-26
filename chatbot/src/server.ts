@@ -30,7 +30,7 @@ import fastifySwaggerUi from "@fastify/swagger-ui";
 import { processTurn } from "./index.js";
 import { detectBackend, getChatModel } from "./llm-client.js";
 import { ConversationMemory } from "./conversation-memory.js";
-import { formatCostUsd } from "./cost-tracker.js";
+import { formatCostUsd, estimateChatCostUsd, sumUsage } from "./cost-tracker.js";
 import {
   ChatRequestSchema,
   ChatResponseSchema,
@@ -40,6 +40,10 @@ import {
   ErrorResponseSchema,
   type ChatRequest,
 } from "./schemas.js";
+import { runGuard, GUARD_REFUSAL_MESSAGE } from "./guard.js";
+import { routeIntent } from "./agents/intent-router.js";
+import { retrieve } from "./rag/retriever.js";
+import { answerFaqStream } from "./agents/faq-agent-stream.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CHATBOT_ROOT = resolve(__dirname, "..");
@@ -309,21 +313,176 @@ app.get("/metrics", {
   });
 });
 
+// ─── POST /chat/stream ──────────────────────────────────────────────────────
+//
+// Server-Sent Events streaming endpoint. Runs the full chatbot pipeline:
+//   1. guard (lexical pre-check)              → SSE event: "guard"
+//   2. router classify intent                 → SSE event: "router"
+//   3. RAG retrieval (when intent === faq)    → SSE event: "rag"
+//   4. FAQ agent token-by-token (when faq)    → SSE event: "token" * N
+//   5. usage + cost summary                   → SSE event: "done"
+//
+// For non-FAQ intents (escalation / property search / smalltalk) the route
+// still emits guard/router events, then a single "fallback" event noting
+// that streaming is only wired into the FAQ path in v0.2. The remaining
+// agents stream in v0.3 — the async-generator pattern in
+// `src/agents/faq-agent-stream.ts` is the template.
+//
+// Heartbeat: a `: ping` SSE comment every 15s — keeps Azure App Service
+// (240s idle timeout) and intermediate proxies from closing the socket.
+app.post(
+  "/chat/stream",
+  {
+    schema: {
+      tags: ["chat"],
+      summary: "Streaming turn (Server-Sent Events)",
+      description:
+        "Same pipeline as POST /chat but the FAQ agent's response streams " +
+        "token-by-token. Event types: guard, router, rag, token, done, error. " +
+        "Non-FAQ intents emit a 'fallback' event and the response is included " +
+        "in the 'done' event instead of token chunks (v0.2 scope).",
+      body: ChatRequestSchema,
+      // SSE response is text/event-stream — OpenAPI 3.1 docs it as a
+      // free-form text payload with a description listing event names.
+      response: {
+        200: {
+          description:
+            "Server-Sent Events stream. Event names: guard, router, rag, token, done, error, fallback.",
+          content: {
+            "text/event-stream": {
+              schema: { type: "string" },
+            },
+          },
+        },
+        400: ErrorResponseSchema,
+        429: ErrorResponseSchema,
+      },
+    },
+    config: {
+      rateLimit: {
+        max: 10, // streaming holds a socket open — be tighter
+        timeWindow: "1 minute",
+        keyGenerator: (request) => {
+          const body = request.body as { conversationId?: string } | undefined;
+          return body?.conversationId ?? request.ip;
+        },
+      },
+    },
+  },
+  async (request: FastifyRequest<{ Body: ChatRequest }>, reply: FastifyReply) => {
+    const body = request.body;
+    const conversationId = body.conversationId ?? request.id;
+    const memory = getOrCreateMemory(conversationId);
+    const { recent } = memory.forPrompt();
+    const start = Date.now();
+
+    // Take ownership of the raw socket — Fastify lifecycle no longer applies.
+    reply.hijack();
+    const raw = reply.raw;
+    raw.setHeader("Content-Type", "text/event-stream");
+    raw.setHeader("Cache-Control", "no-cache, no-transform");
+    raw.setHeader("Connection", "keep-alive");
+    raw.setHeader("X-Accel-Buffering", "no"); // nginx + Azure Front Door
+    raw.flushHeaders?.();
+    raw.socket?.setNoDelay(true);
+
+    function send(event: string, data: unknown): void {
+      raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    }
+
+    const heartbeat = setInterval(() => raw.write(`: ping\n\n`), 15_000);
+
+    let assembledResponse = "";
+    let totalUsage = { prompt: 0, completion: 0 };
+
+    try {
+      // 1. Guard
+      const guard = await runGuard(body.message);
+      send("guard", guard);
+      if (guard.block) {
+        send("token", { text: GUARD_REFUSAL_MESSAGE });
+        send("done", {
+          conversationId,
+          tokens: { prompt: 0, completion: 0 },
+          costUsd: 0,
+          latencyMs: Date.now() - start,
+          intent: "complaint",
+        });
+        clearInterval(heartbeat);
+        raw.end();
+        return;
+      }
+
+      // 2. Router
+      const router = await routeIntent(body.message);
+      send("router", { intent: router.intent, confidence: router.confidence });
+      totalUsage = sumUsage([totalUsage, router.usage]);
+
+      // 3. RAG (FAQ + viewing_request fall-through paths)
+      const isRag = router.intent === "faq" || router.intent === "viewing_request";
+      if (isRag) {
+        const retrieved = await retrieve(body.message, 3);
+        send(
+          "rag",
+          retrieved.map((r) => ({
+            source: r.source,
+            heading: r.heading,
+            score: r.score,
+          })),
+        );
+
+        // 4. Stream FAQ tokens
+        for await (const evt of answerFaqStream(body.message, retrieved, recent)) {
+          if (evt.type === "token") {
+            assembledResponse += evt.text;
+            send("token", { text: evt.text });
+          } else if (evt.type === "done") {
+            totalUsage = sumUsage([totalUsage, evt.usage]);
+          }
+        }
+      } else {
+        // 5b. Non-FAQ — fall back to non-streaming processTurn for parity.
+        send("fallback", {
+          reason: `intent=${router.intent} streams in v0.3; falling back to single-event delivery`,
+        });
+        const result = await processTurn({
+          userMessage: body.message,
+          conversationId,
+          turn: body.turn ?? memory.size() / 2 + 1,
+          history: recent,
+        });
+        assembledResponse = result.response;
+        send("token", { text: result.response });
+        totalUsage = result.record.tokensUsed;
+      }
+
+      // 6. Persist memory + cost
+      memory.append(body.message, assembledResponse);
+      memory.compactIfNeeded().catch(() => {
+        /* silent — next turn retries */
+      });
+      const costUsd = estimateChatCostUsd(getChatModel(), totalUsage, detectBackend());
+
+      send("done", {
+        conversationId,
+        tokens: totalUsage,
+        costUsd,
+        latencyMs: Date.now() - start,
+        intent: router.intent,
+      });
+    } catch (err) {
+      request.log.error({ err }, "stream failed");
+      send("error", {
+        message: err instanceof Error ? err.message : "unknown error",
+      });
+    } finally {
+      clearInterval(heartbeat);
+      raw.end();
+    }
+  },
+);
+
 // ─── boot ───────────────────────────────────────────────────────────────────
-async function main(): Promise<void> {
-  const port = Number(process.env.PORT ?? 3000);
-  const host = process.env.HOST ?? "0.0.0.0";
-
-  try {
-    await app.listen({ port, host });
-    app.log.info(`chatbot listening on http://${host}:${port}`);
-    app.log.info(`backend: ${detectBackend()} · model: ${getChatModel()}`);
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
-}
-
 // Graceful shutdown — flush logs, close in-flight connections before exit.
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
@@ -332,7 +491,14 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
-main().catch((err: unknown) => {
-  console.error(err);
+const port = Number(process.env.PORT ?? 3000);
+const host = process.env.HOST ?? "0.0.0.0";
+
+try {
+  await app.listen({ port, host });
+  app.log.info(`chatbot listening on http://${host}:${port}`);
+  app.log.info(`backend: ${detectBackend()} · model: ${getChatModel()}`);
+} catch (err) {
+  app.log.error(err);
   process.exit(1);
-});
+}
