@@ -370,6 +370,13 @@ The client auto-detects which backend to use. No code changes needed for the
 switch. For full Azure setup walkthrough see
 [`docs/azure-deployment.md`](docs/azure-deployment.md).
 
+For the **comprehensive design walkthrough** covering every architectural
+decision (multi-agent vs monolithic prompt, RAG vs fine-tuning, SSE vs
+WebSockets, TypeBox vs Zod, App Service vs Container Apps, etc.), read
+[`docs/chatbot-deep-dive.md`](docs/chatbot-deep-dive.md) — a top-to-bottom
+learning document for understanding how production-grade LLM chatbots
+are built.
+
 ---
 
 ## Prompt engineering philosophy
