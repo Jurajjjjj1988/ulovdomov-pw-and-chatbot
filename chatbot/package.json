@@ -8,8 +8,10 @@
     "start": "tsx src/index.ts",
     "chat": "tsx src/cli.ts",
     "analyze:logs": "tsx src/conversation-log-analyzer.ts",
+    "eval:faithfulness": "tsx src/eval/ragas-faithfulness.ts",
     "ingest:kb": "tsx src/rag/ingest.ts",
     "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint 'src/**/*.ts'",
     "typecheck": "tsc --noEmit"
   },
