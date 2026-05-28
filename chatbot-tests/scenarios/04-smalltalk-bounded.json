@@ -1,0 +1,17 @@
+{
+  "id": "04-smalltalk-bounded",
+  "description": "Off-topic chitchat — should route to chitchat agent, stay short, redirect to úlovdomov scope, no RAG retrieval.",
+  "language": "sk",
+  "turns": [
+    {
+      "user": "Ahoj, ako sa máš dnes?",
+      "expect": {
+        "guard_verdict": "safe",
+        "router_intent": "chitchat",
+        "router_confidence_min": 0.6,
+        "tool_calls": [],
+        "response_must_mention_any": ["úlovdomov", "byt", "inzer", "pomoc"]
+      }
+    }
+  ]
+}

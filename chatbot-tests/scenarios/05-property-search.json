@@ -1,0 +1,17 @@
+{
+  "id": "05-property-search",
+  "description": "Property search query with criteria — should route to property_search agent, optionally fire search_listings tool, never promise specific listings without source.",
+  "language": "cs",
+  "turns": [
+    {
+      "user": "Hledám 3+kk v Praze 6 do 18 000 Kč.",
+      "expect": {
+        "guard_verdict": "safe",
+        "router_intent": "property_search",
+        "router_confidence_min": 0.7,
+        "tool_calls_allowed": ["search_listings"],
+        "response_must_not_mention": ["garantujem", "stoprocentne", "zaručene"]
+      }
+    }
+  ]
+}

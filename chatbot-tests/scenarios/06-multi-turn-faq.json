@@ -1,0 +1,25 @@
+{
+  "id": "06-multi-turn-faq",
+  "description": "Multi-turn conversation — second turn uses pronominal reference ('a co premium?') and relies on context from turn 1. Verifies memory wiring works end-to-end.",
+  "language": "cs",
+  "turns": [
+    {
+      "user": "Kolik stojí standardní inzerát?",
+      "expect": {
+        "guard_verdict": "safe",
+        "router_intent": "faq",
+        "router_confidence_min": 0.8,
+        "rag_source": "01-pricing.md"
+      }
+    },
+    {
+      "user": "A co prémiový?",
+      "expect": {
+        "guard_verdict": "safe",
+        "router_intent": "faq",
+        "rag_source": "01-pricing.md",
+        "response_must_mention_any": ["490", "Kč", "prémi"]
+      }
+    }
+  ]
+}

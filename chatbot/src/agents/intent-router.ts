@@ -47,14 +47,29 @@ const VALID_INTENTS = new Set<Intent>([
   "chitchat",
 ]);
 
-export async function routeIntent(userMessage: string): Promise<IntentResult> {
+/**
+ * How many recent turn-pairs to feed into the router for context.
+ * Multi-turn conversations use pronominal references ("a co premium?") that
+ * are nonsensical without the prior turn. Two turn-pairs is enough to
+ * disambiguate most follow-ups without bloating the router's token cost.
+ */
+const ROUTER_HISTORY_PAIRS = 2;
+
+export async function routeIntent(
+  userMessage: string,
+  conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = [],
+): Promise<IntentResult> {
   const client = getChatClient();
+  // Trim to the most recent turn pairs so router cost stays bounded even on
+  // long conversations.
+  const recentHistory = conversationHistory.slice(-ROUTER_HISTORY_PAIRS * 2);
   const completion = await client.chat.completions.create({
     model: getChatModel(),
     temperature: 0,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
+      ...recentHistory,
       { role: "user", content: userMessage },
     ],
   });

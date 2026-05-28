@@ -78,8 +78,9 @@ export async function processTurn(input: ProcessTurnInput): Promise<ProcessTurnO
     return { response: GUARD_REFUSAL_MESSAGE, intent: "complaint", record: blockedRecord };
   }
 
-  // 1. Route
-  const router = await routeIntent(input.userMessage);
+  // 1. Route — pass recent history so pronominal follow-ups ("a co premium?")
+  // route correctly instead of being misclassified as chitchat.
+  const router = await routeIntent(input.userMessage, history);
 
   // 2. Branch — only the FAQ branch invokes RAG retrieval, others bypass it.
   let response = "";

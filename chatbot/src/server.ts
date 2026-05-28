@@ -413,8 +413,8 @@ app.post(
         return;
       }
 
-      // 2. Router
-      const router = await routeIntent(body.message);
+      // 2. Router — pass history so pronominal follow-ups route correctly.
+      const router = await routeIntent(body.message, recent);
       send("router", { intent: router.intent, confidence: router.confidence });
       totalUsage = sumUsage([totalUsage, router.usage]);
 
