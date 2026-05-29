@@ -6,7 +6,81 @@ project loosely adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added (2026-06-15 evening session)
+### Planned for v0.3 (later)
+
+- Streaming for non-FAQ intents (escalation / property-search / smalltalk)
+- Redis-backed `ConversationMemory` for multi-instance Container Apps deploys
+- Azure AI Search adapter (vector store swap once knowledge base ≥ 10k chunks)
+- `traceparent` inbound header → OTel context propagation
+- Application Insights exporter for OTel spans
+- Web UI (React + Vite)
+
+---
+
+## [0.2.0] — 2026-05-28
+
+A **production-readiness pass.** The chatbot graduates from "concept demo
+with a working CLI" to "deployable HTTP service that survives a real
+production load and is monitored end-to-end."
+
+### Added
+
+- **HTTP server wrapper** ([`src/server.ts`](src/server.ts)) — Fastify-based,
+  POST `/chat`, POST `/chat/stream` (SSE), GET `/health`, `/ready`, `/metrics`,
+  `/docs` (Swagger UI), `/docs/json` (OpenAPI 3.1 spec).
+- **Server-Sent Events streaming** ([`src/agents/faq-agent-stream.ts`](src/agents/faq-agent-stream.ts))
+  — async-generator pattern, `reply.hijack()` + raw socket, 15-second
+  heartbeat, `setNoDelay(true)`, `X-Accel-Buffering: no`. Token-by-token
+  output for FAQ intent; non-FAQ intents emit a single fallback event in
+  v0.2 (full streaming in v0.3).
+- **Rate limiting** via `@fastify/rate-limit` — `/chat` 20/min keyed on
+  conversationId, `/chat/stream` 10/min (sockets stay open longer),
+  `/health`/`/ready`/`/metrics` unlimited (probes).
+- **TypeBox schemas** ([`src/schemas.ts`](src/schemas.ts)) — single source
+  of truth for runtime Ajv validation AND generated OpenAPI 3.1 components.
+- **OpenAPI 3.1 spec** + Swagger UI via `@fastify/swagger` and
+  `@fastify/swagger-ui` plugins.
+- **ChatSession helper** ([`src/chat-session.ts`](src/chat-session.ts))
+  — thin wrapper around `processTurn()` + `ConversationMemory`. CLI
+  refactored to use it; server uses per-conversationId Map (same pattern,
+  multi-instance ready when backed by Redis).
+- **Context-aware router** — `routeIntent()` now accepts the recent turn
+  history. Multi-turn pronominal follow-ups ("a co premium?") route
+  correctly instead of being misclassified as chitchat. Module 3 multi-
+  turn scenario went from FAIL → PASS without changing the test.
+- **Dockerfile** — multi-stage build, Node 20 Alpine, non-root user,
+  `EXPOSE 3000`, ENTRYPOINT is the HTTP server (override at run-time for CLI).
+- **CI workflow** — typecheck + vitest + smoke imports + Module 3 scenario
+  validation, all on every chatbot push.
+- **3 new Module 3 scenarios** — smalltalk routing, property search
+  routing, multi-turn FAQ memory verification. Replay against live chatbot:
+  6 / 6 scenarios pass, 37 / 37 structural assertions hit.
+- **Deep-dive learning document** ([`docs/chatbot-deep-dive.md`](docs/chatbot-deep-dive.md))
+  — 16-section walkthrough of every architectural decision, written as a
+  reference for understanding how production-grade 2026 LLM chatbots are
+  built. Covers multi-agent vs monolithic, RAG vs fine-tuning, SSE vs
+  WebSockets, TypeBox vs Zod, App Service vs Container Apps vs AKS,
+  secrets via Key Vault references vs Managed Identity, quota gates.
+
+### Changed
+
+- `processTurn()` forwards conversation history to `routeIntent()`; non-
+  breaking — older callers that omit history still work.
+- README adds a deep-dive doc link from the deployment section.
+
+### Verified
+
+- 29 unit tests + 4 skipped (router labeled set) — all green.
+- Module 3 replay 6 / 6 scenarios passing live against GitHub Models backend.
+- HTTP server smoke-tested locally: `/health`, `/ready`, `/docs/json`,
+  `/chat`, `/chat/stream` (SSE token-by-token), `/metrics` all return
+  expected payloads.
+
+---
+
+## [0.1.1] — 2026-06-15 evening (note: historical entry, predates v0.2.0 above by code date)
+
+### Added
 
 - **GitHub Models** as a third LLM backend in
   [`src/llm-client.ts`](src/llm-client.ts). Priority order is GitHub Models →

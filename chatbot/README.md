@@ -155,6 +155,36 @@ Highlights:
 This is the kind of evidence you'd want from any QA-disciplined system —
 deterministic invariants on a non-deterministic surface.
 
+## HTTP API
+
+A Fastify-based server (`src/server.ts`) wraps the orchestrator for
+production deployment.
+
+```bash
+npm run serve
+# → http://localhost:3000
+# → http://localhost:3000/docs       (Swagger UI)
+# → http://localhost:3000/docs/json  (OpenAPI 3.1 spec)
+```
+
+| Path | Method | Purpose |
+|---|---|---|
+| `/chat` | POST | Single turn — guard → router → RAG → agent → log |
+| `/chat/stream` | POST | Same pipeline, Server-Sent Events token-by-token |
+| `/health` | GET | Liveness probe (LLM client resolves) |
+| `/ready` | GET | Readiness probe (RAG index + backend configured) |
+| `/metrics` | GET | Aggregate over the conversation log |
+| `/docs` | GET | Swagger UI |
+| `/docs/json` | GET | OpenAPI 3.1 spec |
+
+Rate limited: `/chat` 20 req/min, `/chat/stream` 10 req/min (sockets stay
+open longer), keyed on `conversationId` when present. Probes unlimited.
+
+Built with `Fastify` + `@fastify/swagger` + `@fastify/swagger-ui` +
+`@fastify/rate-limit` + `@sinclair/typebox`. Schemas in
+[`src/schemas.ts`](src/schemas.ts) drive runtime validation **and** the
+generated docs — single source of truth.
+
 ## Observability
 
 Each turn emits an OpenTelemetry GenAI semantic-conventions span via
@@ -205,9 +235,12 @@ ulovdomov-chatbot/
 ├── tsconfig.json
 │
 ├── src/
-│   ├── llm-client.ts                      ← endpoint-agnostic OpenAI client
+│   ├── llm-client.ts                      ← multi-backend (Azure / OpenAI / GitHub Models)
 │   ├── index.ts                           ← orchestrator entry point
 │   ├── cli.ts                             ← interactive CLI for local testing
+│   ├── server.ts                          ← Fastify HTTP wrapper + SSE streaming
+│   ├── schemas.ts                         ← TypeBox schemas (validation + OpenAPI)
+│   ├── chat-session.ts                    ← memory-aware session helper
 │   │
 │   ├── prompts/                           ← system prompts (markdown)
 │   │   ├── intent-router.system.md
@@ -255,8 +288,11 @@ ulovdomov-chatbot/
 │   ├── 05-foreigners-and-non-residents.md
 │   └── 06-safety-and-scams.md
 │
+├── Dockerfile                             ← production image (HTTP server entrypoint)
+│
 ├── docs/
 │   ├── architecture.md                    ← design decisions deep-dive
+│   ├── chatbot-deep-dive.md               ← comprehensive learning document
 │   ├── prompts-iteration-log.md           ← prompt engineering trajectory
 │   └── azure-deployment.md                ← step-by-step Azure OpenAI setup
 │
