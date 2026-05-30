@@ -113,6 +113,47 @@ await app.register(fastifySwaggerUi, {
   },
 });
 
+// ─── API key auth ──────────────────────────────────────────────────────────
+// Bearer-token auth gating the chat endpoints. Set `CHATBOT_API_KEY` to enable.
+// When unset, the auth hook is a no-op — useful for local development.
+//
+// In production (Azure App Service / Container Apps), bind CHATBOT_API_KEY
+// via a Key Vault reference, NOT as a plaintext config value. See
+// docs/azure-deployment.md § "Secrets management."
+//
+// Probes (/health, /ready) and docs (/docs, /docs/*, /docs/json) stay open
+// — they need to be reachable by k8s/Container Apps health checks and by
+// the engineer browsing the spec.
+const REQUIRED_API_KEY = process.env.CHATBOT_API_KEY;
+const AUTH_OPEN_PATHS = new Set(["/health", "/ready", "/docs/json"]);
+
+if (REQUIRED_API_KEY) {
+  app.addHook("onRequest", async (request, reply) => {
+    if (AUTH_OPEN_PATHS.has(request.url) || request.url.startsWith("/docs")) {
+      return;
+    }
+    const header = request.headers["authorization"];
+    if (typeof header !== "string" || !header.startsWith("Bearer ")) {
+      return reply.code(401).send({
+        error: "unauthorized",
+        message: "Missing Bearer token. Send 'Authorization: Bearer <api-key>'.",
+        statusCode: 401,
+      });
+    }
+    const presented = header.slice("Bearer ".length).trim();
+    if (presented !== REQUIRED_API_KEY) {
+      return reply.code(401).send({
+        error: "unauthorized",
+        message: "Invalid API key.",
+        statusCode: 401,
+      });
+    }
+  });
+  app.log.info("API key authentication enabled");
+} else {
+  app.log.warn("CHATBOT_API_KEY not set — /chat endpoints are open (dev mode)");
+}
+
 // ─── Rate limiting ─────────────────────────────────────────────────────────
 // Global default: 30 req/min per IP. /chat tightened to abuse-friendly limits
 // keyed on conversationId (if provided) — falls back to IP. Health checks
