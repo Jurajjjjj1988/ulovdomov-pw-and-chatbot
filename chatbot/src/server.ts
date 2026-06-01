@@ -44,6 +44,7 @@ import { runGuard, GUARD_REFUSAL_MESSAGE } from "./guard.js";
 import { routeIntent } from "./agents/intent-router.js";
 import { retrieve } from "./rag/retriever.js";
 import { answerFaqStream } from "./agents/faq-agent-stream.js";
+import { requestContext, parseTraceparent } from "./request-context.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CHATBOT_ROOT = resolve(__dirname, "..");
@@ -111,6 +112,29 @@ await app.register(fastifySwaggerUi, {
     deepLinking: true,
     tryItOutEnabled: true,
   },
+});
+
+// ─── Request context ───────────────────────────────────────────────────────
+// Hook that runs FIRST. Wraps the rest of the request in an
+// AsyncLocalStorage so request_id + conversation_id + inbound traceparent
+// flow through orchestrator → router → agents without param plumbing.
+//
+// Reads the W3C traceparent header (Azure Application Insights emits +
+// consumes it natively) so an upstream service's trace_id correlates with
+// the chatbot's spans automatically. If the header is absent, OTel mints
+// a fresh trace_id on the first span — standard behavior.
+app.addHook("onRequest", (request, _reply, done) => {
+  const traceparent = request.headers["traceparent"];
+  const body = request.body as { conversationId?: string } | undefined;
+  const conversationId = body?.conversationId ?? request.id;
+  requestContext.run(
+    {
+      requestId: request.id,
+      conversationId,
+      traceparent: typeof traceparent === "string" ? traceparent : undefined,
+    },
+    () => done(),
+  );
 });
 
 // ─── API key auth ──────────────────────────────────────────────────────────

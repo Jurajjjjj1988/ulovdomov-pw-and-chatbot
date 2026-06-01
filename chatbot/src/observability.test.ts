@@ -65,8 +65,10 @@ describe("buildSpan — OTel GenAI semantic conventions", () => {
     expect(blocked.status).toBe("ERROR");
   });
 
-  it("uses conversationId as traceId and includes turn number in spanId", () => {
-    expect(span.traceId).toBe("conv-abc");
+  it("mints a 32-hex-char trace_id (W3C-compatible) and stores conversationId as an attribute", () => {
+    // GenAI semconv 2026: conversation is an attribute, not the trace_id.
+    expect(span.traceId).toHaveLength(32);
+    expect(span.attributes["gen_ai.conversation.id"]).toBe("conv-abc");
     expect(span.spanId).toBe("conv-abc-3");
   });
 });

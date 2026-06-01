@@ -37,6 +37,7 @@
  */
 
 import type { ConversationTurn } from "./conversation-log.js";
+import { requestContext, parseTraceparent } from "./request-context.js";
 
 export interface Span {
   name: string;
@@ -53,12 +54,23 @@ export function buildSpan(turn: ConversationTurn): Span {
   const endNs = Date.now() * 1_000_000;
   const startNs = endNs - turn.latencyMs * 1_000_000;
 
+  // Trace ID: take it from W3C traceparent on the inbound HTTP request when
+  // present (so an upstream service's trace links to ours). Otherwise mint a
+  // fresh hex string per turn. conversationId stays as a span ATTRIBUTE per
+  // GenAI semconv 2026 — see request-context.ts for the rationale.
+  const ctx = requestContext.getStore();
+  const upstream = ctx?.traceparent ? parseTraceparent(ctx.traceparent) : null;
+  const traceId =
+    upstream?.traceId ?? `${turn.conversationId.replaceAll("-", "")}${turn.turn}`.padEnd(32, "0").slice(0, 32);
+
   const attributes: Record<string, string | number | boolean> = {
     "gen_ai.system": turn.backend === "azure" ? "azure_openai" : "openai",
     "gen_ai.request.model": turn.model,
     "gen_ai.usage.input_tokens": turn.tokensUsed.prompt,
     "gen_ai.usage.output_tokens": turn.tokensUsed.completion,
     "gen_ai.response.cost_usd": Number(turn.costUsd.toFixed(6)),
+    // GenAI semconv 2026: conversation lives as an attribute, NOT trace_id.
+    "gen_ai.conversation.id": turn.conversationId,
 
     "ulovdomov.router.intent": turn.router.intent,
     "ulovdomov.router.confidence": Number(turn.router.confidence.toFixed(3)),
@@ -66,6 +78,10 @@ export function buildSpan(turn: ConversationTurn): Span {
     "ulovdomov.guard.blocked": turn.guard.block,
     "ulovdomov.turn.number": turn.turn,
   };
+
+  if (ctx?.requestId) {
+    attributes["http.request.id"] = ctx.requestId;
+  }
 
   if (turn.retrieval.length > 0) {
     attributes["ulovdomov.retrieval.sources"] = turn.retrieval
@@ -83,7 +99,7 @@ export function buildSpan(turn: ConversationTurn): Span {
 
   return {
     name: `chatbot.turn.${turn.router.intent}`,
-    traceId: turn.conversationId,
+    traceId,
     spanId: `${turn.conversationId}-${turn.turn}`,
     startTimeUnixNano: startNs,
     endTimeUnixNano: endNs,
