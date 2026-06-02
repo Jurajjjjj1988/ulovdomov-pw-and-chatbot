@@ -33,7 +33,7 @@ export interface PropertySearchResult {
 
 export async function handlePropertySearch(
   userMessage: string,
-  conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = [],
+  conversationHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [],
 ): Promise<PropertySearchResult> {
   const client = getChatClient();
   const completion = await client.chat.completions.create({

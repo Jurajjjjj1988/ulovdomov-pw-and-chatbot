@@ -30,7 +30,12 @@ export interface ProcessTurnInput {
   userMessage: string;
   conversationId?: string;
   turn?: number;
-  history?: Array<{ role: "user" | "assistant"; content: string }>;
+  /**
+   * Prior turns to feed into agent prompts. Optional `role: "system"` entries
+   * carry rolling-summary context from ConversationMemory (see ChatSession).
+   * Most callers only use user / assistant roles.
+   */
+  history?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
 }
 
 export interface ProcessTurnOutput {

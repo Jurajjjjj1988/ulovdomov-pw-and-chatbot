@@ -49,13 +49,21 @@ export class ChatSession {
    */
   async send(userMessage: string): Promise<ProcessTurnOutput> {
     this.turnNumber += 1;
-    const { recent } = this.memory.forPrompt();
+    const { systemPrefix, recent } = this.memory.forPrompt();
+
+    // When the rolling summary is ready, surface it as a synthetic system
+    // message at the head of history. Each agent's first message is its own
+    // system prompt; this one rides immediately after, giving agents the
+    // compressed context for everything older than the verbatim window.
+    const history: Array<{ role: "user" | "assistant" | "system"; content: string }> = systemPrefix
+      ? [{ role: "system", content: systemPrefix }, ...recent]
+      : recent;
 
     const result = await processTurn({
       userMessage,
       conversationId: this.conversationId,
       turn: this.turnNumber,
-      history: recent,
+      history,
     });
 
     this.memory.append(userMessage, result.response);

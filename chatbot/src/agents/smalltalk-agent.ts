@@ -32,7 +32,7 @@ export interface SmalltalkResult {
 
 export async function handleSmalltalk(
   userMessage: string,
-  conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = [],
+  conversationHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [],
 ): Promise<SmalltalkResult> {
   const client = getChatClient();
   const completion = await client.chat.completions.create({

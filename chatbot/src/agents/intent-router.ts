@@ -57,7 +57,7 @@ const ROUTER_HISTORY_PAIRS = 2;
 
 export async function routeIntent(
   userMessage: string,
-  conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = [],
+  conversationHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [],
 ): Promise<IntentResult> {
   const client = getChatClient();
   // Trim to the most recent turn pairs so router cost stays bounded even on

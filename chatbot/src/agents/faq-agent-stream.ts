@@ -42,7 +42,7 @@ export type FaqStreamEvent =
 export async function* answerFaqStream(
   userMessage: string,
   retrieved: RetrievedChunk[],
-  conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = [],
+  conversationHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [],
 ): AsyncGenerator<FaqStreamEvent, void, void> {
   const client = getChatClient();
   const stream = await client.chat.completions.create({

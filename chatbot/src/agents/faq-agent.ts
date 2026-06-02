@@ -45,7 +45,7 @@ function buildAugmentedSystemPrompt(chunks: RetrievedChunk[]): string {
 export async function answerFaq(
   userMessage: string,
   retrieved: RetrievedChunk[],
-  conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = [],
+  conversationHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [],
 ): Promise<FaqAnswer> {
   const client = getChatClient();
   const completion = await client.chat.completions.create({
