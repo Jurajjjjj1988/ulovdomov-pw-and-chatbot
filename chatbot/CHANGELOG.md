@@ -8,6 +8,64 @@ project loosely adheres to [Semantic Versioning](https://semver.org/).
 
 ### Planned for v0.3 (later)
 
+- Streaming for non-FAQ intents (escalation, property search, smalltalk) — the
+  async-generator pattern in `src/agents/faq-agent-stream.ts` is the template
+- Application Insights OTel exporter wiring (Azure-side replaces stdout JSONL)
+- Redis-backed `ConversationMemory` for multi-instance Container Apps deploys
+- Azure AI Search adapter (vector store swap once knowledge base ≥ 10k chunks)
+- Web UI (React + Vite)
+
+---
+
+## [0.2.1] — 2026-06-02
+
+Production hardening on top of v0.2.0 — security, infrastructure, and
+observability fidelity.
+
+### Added
+
+- **API key Bearer-token auth** on `/chat` + `/chat/stream`. Gated by
+  `CHATBOT_API_KEY`; unset means dev mode and a one-time warn log. Probes
+  and docs stay open.
+- **AsyncLocalStorage request context** ([`src/request-context.ts`](src/request-context.ts))
+  carrying `requestId`, `conversationId`, and inbound W3C `traceparent` through
+  the entire async chain. Azure Application Insights consumes traceparent
+  natively, so upstream traces correlate zero-config.
+- **Rolling-summary memory wired into agent prompts.** ChatSession now
+  surfaces `ConversationMemory.systemPrefix` as a synthetic system message
+  prepended to history. Long conversations no longer silently forget
+  pre-window content. ProcessTurnInput.history role widened to include
+  `"system"` — non-breaking; existing callers unaffected.
+- **Bicep IaC template** ([`deploy/main.bicep`](deploy/main.bicep)) for a
+  one-shot Azure deployment: Log Analytics + Application Insights +
+  Azure Container Registry + Key Vault + Azure OpenAI (gpt-4o-mini +
+  text-embedding-3-small) + Container Apps Environment + Container App
+  with Managed Identity → Key Vault RBAC. Outputs: FQDN, OpenAI endpoint,
+  Key Vault URI, ACR login server, App Insights connection string.
+
+### Changed
+
+- **GenAI semconv 2026 correction in `src/observability.ts`.** Span `traceId`
+  is now a fresh W3C-compatible 32-hex string (or the inbound traceparent's
+  `trace_id` when present), not the conversationId. Conversation lives as
+  the standard `gen_ai.conversation.id` attribute. Earlier wiring would
+  have produced traces lasting hours / days in APM backends, breaking
+  sampling and retention.
+- **HTTP request ID** now flows into spans as `http.request.id` — log
+  lines (pino) and OTel attributes correlate cleanly.
+
+### Verified
+
+- 35 unit tests + 4 skipped (router needs OpenAI creds) — all green.
+- Module 3 replay: 6/6 scenarios, 37/37 structural assertions pass against
+  the live chatbot (GitHub Models backend).
+- API key flow smoke-tested: open with no key set, 401 without Bearer, 401
+  with wrong token, 200 with correct token.
+
+---
+
+## [0.2.0] — 2026-05-28
+
 - Streaming for non-FAQ intents (escalation / property-search / smalltalk)
 - Redis-backed `ConversationMemory` for multi-instance Container Apps deploys
 - Azure AI Search adapter (vector store swap once knowledge base ≥ 10k chunks)
