@@ -44,6 +44,7 @@ import { runGuard, GUARD_REFUSAL_MESSAGE } from "./guard.js";
 import { routeIntent } from "./agents/intent-router.js";
 import { retrieve } from "./rag/retriever.js";
 import { answerFaqStream } from "./agents/faq-agent-stream.js";
+import { handleSmalltalkStream } from "./agents/smalltalk-agent-stream.js";
 import { requestContext, parseTraceparent } from "./request-context.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -505,10 +506,22 @@ app.post(
             totalUsage = sumUsage([totalUsage, evt.usage]);
           }
         }
+      } else if (router.intent === "chitchat") {
+        // 4b. Smalltalk streams natively — no RAG, no tools.
+        for await (const evt of handleSmalltalkStream(body.message, recent)) {
+          if (evt.type === "token") {
+            assembledResponse += evt.text;
+            send("token", { text: evt.text });
+          } else if (evt.type === "done") {
+            totalUsage = sumUsage([totalUsage, evt.usage]);
+          }
+        }
       } else {
-        // 5b. Non-FAQ — fall back to non-streaming processTurn for parity.
+        // 4c. Tool-call intents (escalation, property_search) — streaming
+        // tool args reliably is a larger refactor (v0.3). For now fall back
+        // to non-streaming processTurn so /chat/stream still works for them.
         send("fallback", {
-          reason: `intent=${router.intent} streams in v0.3; falling back to single-event delivery`,
+          reason: `intent=${router.intent} uses tool calling; streamed in v0.3. Falling back to single-event delivery for this turn.`,
         });
         const result = await processTurn({
           userMessage: body.message,
