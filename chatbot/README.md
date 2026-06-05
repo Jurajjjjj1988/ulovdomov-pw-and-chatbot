@@ -15,6 +15,19 @@ E2E test framework for the same platform.
 
 ---
 
+> **v0.2.1 — production-ready.** HTTP server (Fastify), SSE streaming,
+> OpenAPI 3.1 + Swagger UI, API key auth, rate limiting, OTel GenAI
+> spans with W3C traceparent propagation, AsyncLocalStorage request
+> context, hierarchical conversation memory (sliding window + rolling
+> summary surfaced into agent prompts), Bicep IaC for one-shot Azure
+> Container Apps + Key Vault + AOAI deployment. 35 unit tests + 6 / 6
+> Module 3 scenarios + 37 / 37 structural assertions green against the
+> live GitHub Models backend.
+>
+> For the full design rationale see [`docs/chatbot-deep-dive.md`](docs/chatbot-deep-dive.md).
+> For copy-paste curl examples see [`examples/http-curl-snippets.md`](examples/http-curl-snippets.md).
+> For Azure deployment IaC see [`deploy/main.bicep`](deploy/main.bicep).
+
 ## What this module is
 
 A customer-support chatbot tailored to úlovdomov.cz's domain — listings,
