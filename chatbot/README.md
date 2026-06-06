@@ -24,7 +24,6 @@ E2E test framework for the same platform.
 > Module 3 scenarios + 37 / 37 structural assertions green against the
 > live GitHub Models backend.
 >
-> For the full design rationale see [`docs/chatbot-deep-dive.md`](docs/chatbot-deep-dive.md).
 > For copy-paste curl examples see [`examples/http-curl-snippets.md`](examples/http-curl-snippets.md).
 > For Azure deployment IaC see [`deploy/main.bicep`](deploy/main.bicep).
 
@@ -305,7 +304,6 @@ ulovdomov-chatbot/
 │
 ├── docs/
 │   ├── architecture.md                    ← design decisions deep-dive
-│   ├── chatbot-deep-dive.md               ← comprehensive learning document
 │   ├── prompts-iteration-log.md           ← prompt engineering trajectory
 │   └── azure-deployment.md                ← step-by-step Azure OpenAI setup
 │
@@ -418,13 +416,6 @@ OPENAI_API_KEY=sk-proj-...
 The client auto-detects which backend to use. No code changes needed for the
 switch. For full Azure setup walkthrough see
 [`docs/azure-deployment.md`](docs/azure-deployment.md).
-
-For the **comprehensive design walkthrough** covering every architectural
-decision (multi-agent vs monolithic prompt, RAG vs fine-tuning, SSE vs
-WebSockets, TypeBox vs Zod, App Service vs Container Apps, etc.), read
-[`docs/chatbot-deep-dive.md`](docs/chatbot-deep-dive.md) — a top-to-bottom
-learning document for understanding how production-grade LLM chatbots
-are built.
 
 ---
 

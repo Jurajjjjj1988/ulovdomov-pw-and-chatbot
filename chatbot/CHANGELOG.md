@@ -113,12 +113,6 @@ production load and is monitored end-to-end."
 - **3 new Module 3 scenarios** — smalltalk routing, property search
   routing, multi-turn FAQ memory verification. Replay against live chatbot:
   6 / 6 scenarios pass, 37 / 37 structural assertions hit.
-- **Deep-dive learning document** ([`docs/chatbot-deep-dive.md`](docs/chatbot-deep-dive.md))
-  — 16-section walkthrough of every architectural decision, written as a
-  reference for understanding how production-grade 2026 LLM chatbots are
-  built. Covers multi-agent vs monolithic, RAG vs fine-tuning, SSE vs
-  WebSockets, TypeBox vs Zod, App Service vs Container Apps vs AKS,
-  secrets via Key Vault references vs Managed Identity, quota gates.
 
 ### Changed
 
