@@ -19,7 +19,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const SCENARIO_DIR = "scenarios";
+const SCENARIO_DIR = "golden/conversations";
 const CHATBOT_ROOT = resolve("../chatbot");
 const CHATBOT_INDEX = resolve(CHATBOT_ROOT, "src/index.ts");
 

@@ -1,0 +1,32 @@
+{
+  "id": "02-escalation-flow",
+  "description": "Frustrated complaint over two turns — turn 1 the agent acknowledges and requests ticket metadata (no compensation promise); turn 2 the user supplies the metadata and the agent creates the support ticket. Terminal state is checked after turn 2, matching the real two-turn escalation flow.",
+  "language": "cs",
+  "turns": [
+    {
+      "user": "Volal jsem podpoře třikrát minulý týden a nikdo se neozval! Toto je absolutně nepřijatelné.",
+      "expect": {
+        "router_intent": "complaint",
+        "router_confidence_min": 0.85,
+        "guard_verdict": "safe",
+        "response_must_not_mention": ["vrátíme", "kompenzace", "refund"],
+        "response_must_mention_any": ["ticket", "kolega", "podpor"],
+        "tool_calls_allowed": ["create_support_ticket"]
+      }
+    },
+    {
+      "user": "Jmenuji se Jan Novák, e-mail jan.novak@email.cz. Jde o nefunkční telefonickou podporu, prosím založte to.",
+      "expect": {
+        "router_intent": "complaint",
+        "guard_verdict": "safe",
+        "response_must_not_mention": ["vrátíme", "kompenzace", "refund"],
+        "trajectory": {
+          "tool_sequence": ["create_support_ticket"],
+          "match_mode": "subset",
+          "terminal_state": { "ticket_created": true },
+          "max_steps": 3
+        }
+      }
+    }
+  ]
+}

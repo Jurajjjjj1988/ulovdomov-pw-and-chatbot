@@ -1,0 +1,33 @@
+[
+  {
+    "ts": "2026-06-24T21:36:37.327Z",
+    "conversationId": "2deef871-6f7f-4df4-9eb0-e6a9129d9112",
+    "turn": 1,
+    "userMessage": "Ahoj, ako sa máš dnes?",
+    "router": {
+      "intent": "chitchat",
+      "confidence": 0.95,
+      "rationale": "Správa je neformálny pozdrav a nie je spojená s otázkami o službách alebo nehnuteľnostiach.",
+      "usage": {
+        "prompt": 974,
+        "completion": 57
+      }
+    },
+    "retrieval": [],
+    "agentResponse": "Ahoj! Mám sa fajn, ďakujem za opýtanie. 😊 Hľadáš byt na prenájom alebo predaj? Alebo ti môžem poradiť s niečím okolo inzerátu?",
+    "toolCalls": [],
+    "latencyMs": 4483,
+    "tokensUsed": {
+      "prompt": 2192,
+      "completion": 108
+    },
+    "costUsd": 0.00039359999999999997,
+    "model": "gpt-4o-mini",
+    "backend": "github-models",
+    "guard": {
+      "verdict": "safe",
+      "reasons": [],
+      "block": false
+    }
+  }
+]

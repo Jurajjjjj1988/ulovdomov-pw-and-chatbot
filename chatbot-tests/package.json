@@ -5,7 +5,16 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "replay": "tsx replay.ts"
+    "eval": "tsx eval-runner.ts",
+    "eval:gate": "tsx gate.ts",
+    "eval:gate:latest": "tsx gate.ts --use-latest",
+    "eval:baseline:update": "tsx gate.ts --update-baseline",
+    "eval:retrieval:embed": "tsx fixtures/build-query-embeddings.ts",
+    "eval:record": "tsx record-snapshots.ts",
+    "review": "tsx review-queue.ts",
+    "replay": "tsx replay.ts",
+    "test": "tsx scorers/l1-model.test.ts && tsx scorers/l2-retrieval.test.ts && tsx scorers/l3-trajectory.test.ts && tsx scorers/guard-classifier.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

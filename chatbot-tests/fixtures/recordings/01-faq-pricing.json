@@ -1,0 +1,49 @@
+[
+  {
+    "ts": "2026-06-24T21:36:23.192Z",
+    "conversationId": "37fd9353-494b-47fa-9408-d8813369e7f6",
+    "turn": 1,
+    "userMessage": "Kolik stojí prémiový inzerát?",
+    "router": {
+      "intent": "faq",
+      "confidence": 0.95,
+      "rationale": "Otázka o ceně služby, žádná konkrétní nemovitost.",
+      "usage": {
+        "prompt": 975,
+        "completion": 42
+      }
+    },
+    "retrieval": [
+      {
+        "source": "01-pricing.md",
+        "heading": "Prémiový inzerát",
+        "score": 0.6808332103127678
+      },
+      {
+        "source": "01-pricing.md",
+        "heading": "Štandardný inzerát",
+        "score": 0.5805094788480323
+      },
+      {
+        "source": "01-pricing.md",
+        "heading": "Vrátenie peňazí",
+        "score": 0.5680849473062535
+      }
+    ],
+    "agentResponse": "Prémiový inzerát stojí **490 Kč na 30 dní**. Môžeš si ho tiež zvoliť na **14 dní za 290 Kč**. Prémiový inzerát ponúka viacero výhod, ako napríklad:\n\n- Topovanie inzerátu na vrchu výsledkov vyhľadávania\n- Štítok \"Prémiový\" pre vizuálne odlíšenie\n- Štatistiky zobrazení v reálnom čase\n- Možnosť pridať až 30 fotografií (namiesto 15)\n\nChceš pomoc s pridaním prémiového inzerátu?",
+    "toolCalls": [],
+    "latencyMs": 5124,
+    "tokensUsed": {
+      "prompt": 2540,
+      "completion": 185
+    },
+    "costUsd": 0.000492,
+    "model": "gpt-4o-mini",
+    "backend": "github-models",
+    "guard": {
+      "verdict": "safe",
+      "reasons": [],
+      "block": false
+    }
+  }
+]

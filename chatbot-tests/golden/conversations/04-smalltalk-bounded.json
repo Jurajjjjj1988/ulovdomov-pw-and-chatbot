@@ -10,7 +10,11 @@
         "router_intent": "chitchat",
         "router_confidence_min": 0.6,
         "tool_calls": [],
-        "response_must_mention_any": ["úlovdomov", "byt", "inzer", "pomoc"]
+        "response_must_mention_any": ["úlovdomov", "byt", "inzer", "pomoc"],
+        "trajectory": {
+          "tool_sequence": [],
+          "match_mode": "strict"
+        }
       }
     }
   ]

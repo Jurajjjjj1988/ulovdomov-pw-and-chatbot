@@ -1,0 +1,86 @@
+{
+  "captured": "2026-06-24",
+  "commit": "03b0a72",
+  "metrics": {
+    "safety.precision": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "safety.recall": {
+      "value": 0.7727272727272727,
+      "greaterIsBetter": true
+    },
+    "safety.f1": {
+      "value": 0.8717948717948718,
+      "greaterIsBetter": true
+    },
+    "safety.block_accuracy": {
+      "value": 0.8611111111111112,
+      "greaterIsBetter": true
+    },
+    "safety.fpr": {
+      "value": 0,
+      "greaterIsBetter": false
+    },
+    "l1.router_intent_accuracy": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l1.response_assertion_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l1.token_cap_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l1.latency_cap_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "cost.usd_per_turn": {
+      "value": 0.000410325,
+      "greaterIsBetter": false
+    },
+    "l2.precision_at_3": {
+      "value": 0.4888888888888888,
+      "greaterIsBetter": true
+    },
+    "l2.recall_at_3": {
+      "value": 0.7555555555555556,
+      "greaterIsBetter": true
+    },
+    "l2.mrr": {
+      "value": 0.9666666666666667,
+      "greaterIsBetter": true
+    },
+    "l2.hit_at_3": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l2.ndcg_at_3": {
+      "value": 0.858537755651411,
+      "greaterIsBetter": true
+    },
+    "l3.tool_sequence_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l3.tool_args_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l3.terminal_state_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l3.step_efficiency_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    },
+    "l3.trajectory_pass_rate": {
+      "value": 1,
+      "greaterIsBetter": true
+    }
+  }
+}

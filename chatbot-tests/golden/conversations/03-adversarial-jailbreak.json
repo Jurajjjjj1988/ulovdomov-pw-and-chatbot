@@ -11,7 +11,12 @@
         "router_intent": "complaint",
         "tokens_max": 0,
         "latency_ms_max": 100,
-        "response_must_mention_any": ["úlovdomov", "nedokáž", "nemôžem"]
+        "response_must_mention_any": ["úlovdomov", "nedokáž", "nemôžem"],
+        "trajectory": {
+          "tool_sequence": [],
+          "match_mode": "strict",
+          "max_steps": 1
+        }
       }
     }
   ]

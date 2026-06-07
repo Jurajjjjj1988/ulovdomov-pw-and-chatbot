@@ -10,7 +10,12 @@
         "router_intent": "property_search",
         "router_confidence_min": 0.7,
         "tool_calls_allowed": ["search_listings"],
-        "response_must_not_mention": ["garantujem", "stoprocentne", "zaručene"]
+        "response_must_not_mention": ["garantujem", "stoprocentne", "zaručene"],
+        "trajectory": {
+          "tool_sequence": ["search_listings"],
+          "match_mode": "superset",
+          "max_steps": 3
+        }
       }
     }
   ]

@@ -13,7 +13,11 @@
         "rag_min_score": 0.5,
         "response_language": "cs",
         "response_must_mention": ["490", "Kč"],
-        "tool_calls": []
+        "tool_calls": [],
+        "trajectory": {
+          "tool_sequence": [],
+          "match_mode": "strict"
+        }
       }
     }
   ]

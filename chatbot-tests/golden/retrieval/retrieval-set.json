@@ -1,0 +1,219 @@
+{
+  "embeddingModel": "text-embedding-3-small",
+  "queries": [
+    {
+      "id": "ret-pricing-premium-cost",
+      "query": "Kolik stojí prémiový inzerát na 30 dní?",
+      "relevant": [
+        {
+          "chunk": "01-pricing.md#Prémiový inzerát",
+          "grade": 2
+        },
+        {
+          "chunk": "01-pricing.md#Štandardný inzerát",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-pricing-refund",
+      "query": "Můžu vrátit peníze za prémium, když ho zruším hned po zaplacení?",
+      "relevant": [
+        {
+          "chunk": "01-pricing.md#Vrátenie peňazí",
+          "grade": 2
+        },
+        {
+          "chunk": "01-pricing.md#Platba",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-pricing-invoice-payment",
+      "query": "Jaké platební metody přijímáte a dostanu fakturu s IČO?",
+      "relevant": [
+        {
+          "chunk": "01-pricing.md#Platba",
+          "grade": 2
+        },
+        {
+          "chunk": "01-pricing.md#Faktúra a účtenka",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "ret-viewing-request",
+      "query": "Jak požádám majitele o prohlídku bytu?",
+      "relevant": [
+        {
+          "chunk": "02-viewing-process.md#Ako požiadať o prehliadku",
+          "grade": 2
+        },
+        {
+          "chunk": "02-viewing-process.md#Zrušenie prehliadky",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-viewing-bring-docs",
+      "query": "Co si mám vzít s sebou na prohlídku nájemního bytu?",
+      "relevant": [
+        {
+          "chunk": "02-viewing-process.md#Čo si vziať na prehliadku",
+          "grade": 2
+        },
+        {
+          "chunk": "02-viewing-process.md#Doklady po prehliadke",
+          "grade": 1
+        },
+        {
+          "chunk": "02-viewing-process.md#Ako sa pripraviť (psychologická časť)",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-account-forgot-password",
+      "query": "Zapomněl jsem heslo, jak ho resetuji?",
+      "relevant": [
+        {
+          "chunk": "03-account-and-gdpr.md#Zabudnuté heslo",
+          "grade": 2
+        },
+        {
+          "chunk": "03-account-and-gdpr.md#Bezpečnosť účtu",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-account-delete-gdpr",
+      "query": "Chci trvale smazat účet a vědět, co se stane s mými osobními údaji a fakturačními daty.",
+      "relevant": [
+        {
+          "chunk": "03-account-and-gdpr.md#Mazanie účtu",
+          "grade": 2
+        },
+        {
+          "chunk": "03-account-and-gdpr.md#GDPR — tvoje práva",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "ret-account-2fa",
+      "query": "Jak si zabezpečím účet dvoufaktorovým ověřením?",
+      "relevant": [
+        {
+          "chunk": "03-account-and-gdpr.md#Bezpečnosť účtu",
+          "grade": 2
+        },
+        {
+          "chunk": "03-account-and-gdpr.md#Overenie účtu",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-financing-ltv",
+      "query": "Kolik vlastních zdrojů potřebuju, když mi je 30 let a byt stojí 4,5 milionu?",
+      "relevant": [
+        {
+          "chunk": "04-financing.md#LTV — koľko vlastných zdrojov potrebuješ",
+          "grade": 2
+        },
+        {
+          "chunk": "04-financing.md#Kalkulačka hypotéky na úlovdomov",
+          "grade": 1
+        },
+        {
+          "chunk": "04-financing.md#Predschválenie hypotéky",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-financing-transfer-tax",
+      "query": "Platí se v Česku daň z nabytí nemovitosti při koupi bytu?",
+      "relevant": [
+        {
+          "chunk": "04-financing.md#Daň z nadobudnutia nehnuteľnosti",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "ret-foreigner-buy-property",
+      "query": "Můžu si jako cizinec ze třetí země koupit nemovitost v ČR a jaké doklady potřebuji?",
+      "relevant": [
+        {
+          "chunk": "05-foreigners-and-non-residents.md#Môžem si v ČR kúpiť nehnuteľnosť ako cudzinec?",
+          "grade": 2
+        },
+        {
+          "chunk": "05-foreigners-and-non-residents.md#Aké doklady potrebujem ako cudzinec",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "ret-foreigner-mortgage-cross",
+      "query": "Jsem Slovák bez trvalého pobytu v ČR, ale mám tu příjem — dostanu hypotéku?",
+      "relevant": [
+        {
+          "chunk": "05-foreigners-and-non-residents.md#Hypotéka pre cudzincov",
+          "grade": 2
+        },
+        {
+          "chunk": "04-financing.md#Hypotéka pre cudzincov",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "ret-scam-deposit-upfront",
+      "query": "Inzerent chce zálohu předem a klíče prý pošle poštou, je to podvod?",
+      "relevant": [
+        {
+          "chunk": "06-safety-and-scams.md#1. \"Zálohu pošli vopred, kľúče dostaneš poštou\"",
+          "grade": 2
+        },
+        {
+          "chunk": "06-safety-and-scams.md#Najčastejšie podvody na inzertných portáloch",
+          "grade": 1
+        },
+        {
+          "chunk": "06-safety-and-scams.md#Čo ja viem urobiť ako používateľ",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-scam-victim-help",
+      "query": "Stal jsem se obětí podvodu při pronájmu, co mám teď dělat?",
+      "relevant": [
+        {
+          "chunk": "06-safety-and-scams.md#Ak si bol obeťou podvodu",
+          "grade": 2
+        },
+        {
+          "chunk": "06-safety-and-scams.md#4. Phishing cez chat na portáli",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "ret-nearmiss-property-tax-rate",
+      "query": "Jaká je sazba daně z nemovitosti za rok pro byt 60 m² v Praze?",
+      "relevant": [
+        {
+          "chunk": "04-financing.md#Daň z nadobudnutia nehnuteľnosti",
+          "grade": 1
+        }
+      ]
+    }
+  ]
+}

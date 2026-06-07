@@ -1,0 +1,96 @@
+[
+  {
+    "ts": "2026-06-24T21:36:44.511Z",
+    "conversationId": "8e33a2c6-5dcd-4b11-94fa-2de75aafea06",
+    "turn": 1,
+    "userMessage": "Kolik stojí standardní inzerát?",
+    "router": {
+      "intent": "faq",
+      "confidence": 0.95,
+      "rationale": "Otázka o ceně služby, žádná konkrétní nemovitost.",
+      "usage": {
+        "prompt": 974,
+        "completion": 42
+      }
+    },
+    "retrieval": [
+      {
+        "source": "01-pricing.md",
+        "heading": "Štandardný inzerát",
+        "score": 0.687240429311332
+      },
+      {
+        "source": "01-pricing.md",
+        "heading": "Prémiový inzerát",
+        "score": 0.5851216047372435
+      },
+      {
+        "source": "04-financing.md",
+        "heading": "Provízia realitnej kancelárie",
+        "score": 0.5165979391874592
+      }
+    ],
+    "agentResponse": "Standardní inzerát na úlovdomov.cz je zdarma na 30 dní. Obsahuje až 15 fotografií, textový popis, mapovou lokalitu a kontaktní formulář. Po 30 dnech se inzerát automaticky archivuje, ale můžeš ho kdykoli znovu zveřejnit bez doplatku.\n\nChceš pomoc s přidáním inzerátu?",
+    "toolCalls": [],
+    "latencyMs": 3919,
+    "tokensUsed": {
+      "prompt": 2570,
+      "completion": 130
+    },
+    "costUsd": 0.00046349999999999994,
+    "model": "gpt-4o-mini",
+    "backend": "github-models",
+    "guard": {
+      "verdict": "safe",
+      "reasons": [],
+      "block": false
+    }
+  },
+  {
+    "ts": "2026-06-24T21:36:49.678Z",
+    "conversationId": "9ccc0728-581e-4080-9ae8-2b81fb930f63",
+    "turn": 2,
+    "userMessage": "A co prémiový?",
+    "router": {
+      "intent": "faq",
+      "confidence": 0.9,
+      "rationale": "Otázka o ceně prémiového inzerátu je typická pro FAQ, neobsahuje konkrétní nehnuteľnosť.",
+      "usage": {
+        "prompt": 1075,
+        "completion": 56
+      }
+    },
+    "retrieval": [
+      {
+        "source": "01-pricing.md",
+        "heading": "Prémiový inzerát",
+        "score": 0.5330791503894176
+      },
+      {
+        "source": "01-pricing.md",
+        "heading": "Vrátenie peňazí",
+        "score": 0.4815679096374908
+      },
+      {
+        "source": "01-pricing.md",
+        "heading": "Faktúra a účtenka",
+        "score": 0.44673099086642626
+      }
+    ],
+    "agentResponse": "Prémiový inzerát stojí 490 Kč na 30 dní, nebo 290 Kč na 14 dní. Tento balík přidává:\n\n- **Topování inzerátu** — zobrazuje se na vrchu výsledků vyhledávání\n- **Štítek \"Prémiový\"** — vizuálně odliší inzerát v seznamu\n- **Štatistiky zobrazení** v reálném čase\n- **Až 30 fotografií** (místo 15)\n- **Predlouženou dobu** — automatické zverejnění po archivaci (1×)\n\nPokud bys měl zájem o prémiový inzerát, rád ti pomohu s jeho přidáním!",
+    "toolCalls": [],
+    "latencyMs": 5166,
+    "tokensUsed": {
+      "prompt": 2684,
+      "completion": 219
+    },
+    "costUsd": 0.000534,
+    "model": "gpt-4o-mini",
+    "backend": "github-models",
+    "guard": {
+      "verdict": "safe",
+      "reasons": [],
+      "block": false
+    }
+  }
+]

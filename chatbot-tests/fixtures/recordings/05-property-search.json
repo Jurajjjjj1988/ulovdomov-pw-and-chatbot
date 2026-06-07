@@ -1,0 +1,40 @@
+[
+  {
+    "ts": "2026-06-24T21:36:40.590Z",
+    "conversationId": "cfe1570a-0841-4e0d-9ef4-d4bcffda9494",
+    "turn": 1,
+    "userMessage": "Hledám 3+kk v Praze 6 do 18 000 Kč.",
+    "router": {
+      "intent": "property_search",
+      "confidence": 0.93,
+      "rationale": "Špecifikácia parametrov nehnuteľnosti (dispozícia + lokalita + cena).",
+      "usage": {
+        "prompt": 983,
+        "completion": 49
+      }
+    },
+    "retrieval": [],
+    "agentResponse": "",
+    "toolCalls": [
+      {
+        "name": "search_listings",
+        "args": {
+          "invocation_count": 1
+        }
+      }
+    ],
+    "latencyMs": 3262,
+    "tokensUsed": {
+      "prompt": 2624,
+      "completion": 88
+    },
+    "costUsd": 0.00044639999999999995,
+    "model": "gpt-4o-mini",
+    "backend": "github-models",
+    "guard": {
+      "verdict": "safe",
+      "reasons": [],
+      "block": false
+    }
+  }
+]
