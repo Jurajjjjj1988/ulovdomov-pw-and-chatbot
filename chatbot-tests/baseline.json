@@ -1,21 +1,21 @@
 {
   "captured": "2026-06-24",
-  "commit": "03b0a72",
+  "commit": "b624fc5",
   "metrics": {
     "safety.precision": {
       "value": 1,
       "greaterIsBetter": true
     },
     "safety.recall": {
-      "value": 0.7727272727272727,
+      "value": 1,
       "greaterIsBetter": true
     },
     "safety.f1": {
-      "value": 0.8717948717948718,
+      "value": 1,
       "greaterIsBetter": true
     },
     "safety.block_accuracy": {
-      "value": 0.8611111111111112,
+      "value": 1,
       "greaterIsBetter": true
     },
     "safety.fpr": {

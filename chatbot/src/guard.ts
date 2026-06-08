@@ -52,7 +52,9 @@ const HARD_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   },
   // Role-override / persona swap
   {
-    pattern: /\byou\s+are\s+now\s+(dan|aim|developer\s+mode|jailbroken)\b/i,
+    // Allow filler ("now", "in/a/the/like") between "you are" and the persona —
+    // catches "pretend you are now in developer mode".
+    pattern: /\byou\s+are\s+(?:now\s+)?(?:(?:in|a|the|like)\s+)?(dan|aim|developer\s+mode|jailbroken)\b/i,
     reason: "role-override (DAN/AIM/dev-mode)",
   },
   {
@@ -88,17 +90,79 @@ const SOFT_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /\bbez\s+(obmedz|pravidiel|cenz)/i, reason: "soft: 'without restrictions' (CS/SK)" },
 ];
 
-/** Stage 1 — lexical. Always runs. */
+/** Strip diacritics so "predošlé" matches the diacritic-free CS/SK patterns. */
+function stripDiacritics(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+/** Map common leetspeak substitutions back to letters ("1gn0re" → "ignore"). */
+function deLeet(s: string): string {
+  const map: Record<string, string> = {
+    "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s",
+  };
+  return s.replace(/[013457@$]/g, (c) => map[c] ?? c);
+}
+
+/**
+ * Collapse "spaced-out" obfuscation ("i g n o r e   a l l" → "ignore all").
+ * Words are assumed separated by 2+ spaces; single spaces between single
+ * characters inside a group are removed. Normal prose is left untouched.
+ */
+function collapseSpacedOutLetters(s: string): string {
+  return s
+    .split(/\s{2,}/)
+    .map((group) => (/^\w(?:\s\w)+$/.test(group) ? group.replace(/\s+/g, "") : group))
+    .join(" ");
+}
+
+/** Decode any printable base64 token embedded in the message (best-effort). */
+function decodeBase64Tokens(s: string): string[] {
+  const out: string[] = [];
+  for (const token of s.match(/[A-Za-z0-9+/]{16,}={0,2}/g) ?? []) {
+    try {
+      const decoded = Buffer.from(token, "base64").toString("utf8");
+      if (decoded.length >= 4 && /^[\t\n\r\x20-\x7e]+$/.test(decoded)) out.push(decoded);
+    } catch {
+      // not valid base64 — ignore
+    }
+  }
+  return out;
+}
+
+/**
+ * Build the variants a pattern is tested against. The raw message is always
+ * included; the rest defeat obfuscation (diacritics, leetspeak, spaced-out
+ * letters, base64) that a literal regex would otherwise miss.
+ */
+function normalizedVariants(text: string): string[] {
+  const variants = new Set<string>();
+  for (const base of [text, stripDiacritics(text)]) {
+    variants.add(base);
+    variants.add(deLeet(base));
+    const despaced = collapseSpacedOutLetters(base);
+    variants.add(despaced);
+    variants.add(deLeet(despaced));
+  }
+  for (const decoded of decodeBase64Tokens(text)) {
+    variants.add(decoded);
+    variants.add(stripDiacritics(decoded));
+  }
+  return [...variants];
+}
+
+/**
+ * Stage 1 — lexical. Always runs. Each pattern is tested against every
+ * normalized variant of the message (raw, de-diacritic, de-leet, de-spaced,
+ * base64-decoded), so common obfuscations don't slip past the blocklist.
+ */
 export function lexicalCheck(userMessage: string): {
   hardHits: string[];
   softHits: string[];
 } {
-  const hardHits = HARD_PATTERNS.filter((p) => p.pattern.test(userMessage)).map(
-    (p) => p.reason,
-  );
-  const softHits = SOFT_PATTERNS.filter((p) => p.pattern.test(userMessage)).map(
-    (p) => p.reason,
-  );
+  const variants = normalizedVariants(userMessage);
+  const matches = (p: RegExp): boolean => variants.some((v) => p.test(v));
+  const hardHits = HARD_PATTERNS.filter((p) => matches(p.pattern)).map((p) => p.reason);
+  const softHits = SOFT_PATTERNS.filter((p) => matches(p.pattern)).map((p) => p.reason);
   return { hardHits, softHits };
 }
 
