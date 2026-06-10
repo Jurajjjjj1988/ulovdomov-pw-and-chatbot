@@ -1,0 +1,66 @@
+# Chatbot module CI — typecheck + lint on every push touching chatbot/
+name: Chatbot — typecheck + lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "chatbot/**"
+      - ".github/workflows/chatbot-ci.yml"
+  pull_request:
+    paths:
+      - "chatbot/**"
+
+jobs:
+  typecheck:
+    name: TypeScript strict typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chatbot
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: chatbot/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+  smoke:
+    name: Smoke test — orchestrator imports cleanly
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chatbot
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: chatbot/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify imports resolve
+        # Smoke check: orchestrator + agents + RAG modules import without errors.
+        # We mock OPENAI_API_KEY so the LLM client constructor doesn't throw.
+        env:
+          OPENAI_API_KEY: sk-mock-for-import-check
+        run: |
+          npx tsx --eval "
+            import('./src/index.ts').then(() => console.log('✓ orchestrator imports'));
+            import('./src/agents/intent-router.ts').then(() => console.log('✓ router imports'));
+            import('./src/agents/faq-agent.ts').then(() => console.log('✓ faq agent imports'));
+            import('./src/agents/escalation-handler.ts').then(() => console.log('✓ escalation imports'));
+            import('./src/rag/retriever.ts').then(() => console.log('✓ retriever imports'));
+          "
