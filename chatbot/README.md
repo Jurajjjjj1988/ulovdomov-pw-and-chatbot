@@ -1,8 +1,9 @@
 # Module 2 — AI customer-support chatbot
 
-> A concept multi-agent LLM chatbot for [úlovdomov.cz](https://www.ulovdomov.cz)
-> — the Czech real estate platform. Demonstrates intent routing, RAG,
-> escalation with tool calling, and Azure OpenAI deployment-ready architecture.
+> A multi-agent LLM chatbot for [úlovdomov.cz](https://www.ulovdomov.cz) —
+> the Czech real estate platform. Intent routing, RAG-grounded answers in
+> Czech/Slovak, escalation with tool calling, and Azure OpenAI deployment-
+> ready architecture.
 
 This is **Module 2** of the [ulovdomov-pw-and-chatbot](../README.md) suite.
 The companion [Module 1](../tests/README.md) is the production Playwright
@@ -14,12 +15,11 @@ E2E test framework for the same platform.
 
 ---
 
-## About this module
+## What this module is
 
-[úlovdomov.cz](https://www.ulovdomov.cz) is a major Czech online real estate
-platform — and as of mid-2026 **does not have a customer-facing AI assistant**.
-This repository is a **concept / proposal piece** that demonstrates how such a
-chatbot could be designed using modern LLM agent architecture:
+A customer-support chatbot tailored to úlovdomov.cz's domain — listings,
+viewings, GDPR, financing, accounts. It demonstrates the architecture
+patterns used in production-grade LLM applications:
 
 - **Multi-agent orchestration** — intent routing, FAQ handling, escalation
 - **RAG (Retrieval-Augmented Generation)** — grounded answers from a curated
@@ -30,12 +30,6 @@ chatbot could be designed using modern LLM agent architecture:
   surfaces failure patterns and prompt iteration candidates
 - **Azure OpenAI deployment-ready** — single-line config switch between OpenAI
   direct and Azure OpenAI Service
-
-**Not affiliated with úlovdomov.cz.** Knowledge base reflects publicly available
-domain knowledge for Czech real estate (advertising pricing, viewing process,
-GDPR, payments). Built as a portfolio piece to demonstrate prompt engineering,
-conversational design, and Azure OpenAI architecture patterns for the Slovak/Czech
-language market.
 
 ---
 
@@ -119,8 +113,11 @@ ulovdomov-chatbot/
 │   │
 │   ├── agents/                            ← agent implementations
 │   │   ├── intent-router.ts
+│   │   ├── intent-router.test.ts          ← Vitest classification accuracy
 │   │   ├── faq-agent.ts
-│   │   └── escalation-handler.ts
+│   │   ├── escalation-handler.ts
+│   │   ├── property-search-agent.ts
+│   │   └── smalltalk-agent.ts
 │   │
 │   ├── rag/                               ← retrieval-augmented generation
 │   │   ├── retriever.ts                   ← cosine similarity over embeddings
@@ -128,9 +125,12 @@ ulovdomov-chatbot/
 │   │   └── knowledge-base.ts              ← chunk splitter
 │   │
 │   ├── tools/                             ← LLM-callable tools (mock backend)
+│   │   ├── search-listings.ts
 │   │   ├── schedule-viewing.ts
-│   │   ├── create-support-ticket.ts
-│   │   └── check-property-availability.ts
+│   │   └── create-support-ticket.ts
+│   │
+│   ├── eval/                              ← evaluation scripts
+│   │   └── ragas-faithfulness.ts          ← RAGAS-style faithfulness scoring
 │   │
 │   ├── conversation-log.ts                ← JSONL append-only logger
 │   └── conversation-log-analyzer.ts       ← post-hoc quality analysis
@@ -138,15 +138,23 @@ ulovdomov-chatbot/
 ├── knowledge-base/                        ← Czech/Slovak RAG sources
 │   ├── 01-pricing.md
 │   ├── 02-viewing-process.md
-│   └── 03-account-and-gdpr.md
+│   ├── 03-account-and-gdpr.md
+│   ├── 04-financing.md
+│   ├── 05-foreigners-and-non-residents.md
+│   └── 06-safety-and-scams.md
 │
 ├── docs/
 │   ├── architecture.md                    ← design decisions deep-dive
 │   ├── prompts-iteration-log.md           ← prompt engineering trajectory
 │   └── azure-deployment.md                ← step-by-step Azure OpenAI setup
 │
-└── examples/
-    └── sample-conversations.md            ← annotated example transcripts
+├── examples/
+│   └── sample-conversations.md            ← annotated example transcripts
+│
+├── CHANGELOG.md
+├── eslint.config.mjs
+├── package.json
+└── tsconfig.json
 ```
 
 ---

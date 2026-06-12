@@ -1,12 +1,9 @@
 # úlovdomov · Playwright tests + AI chatbot
 
-> **⚠️ Portfolio DEMO project.** Not affiliated with úlovdomov.cz. Built to
-> demonstrate end-to-end **Quality Engineering** for a Czech real-estate
-> platform — production-style Playwright test automation **and** a concept
-> multi-agent AI customer-support chatbot for the same platform.
-
-[![Demo project](https://img.shields.io/badge/⚠️_Portfolio-DEMO-orange?style=flat-square)](#license--disclaimer)
-[![Not affiliated](https://img.shields.io/badge/úlovdomov.cz-not_affiliated-lightgrey?style=flat-square)](https://www.ulovdomov.cz)
+> End-to-end **Quality Engineering** stack for the Czech real-estate
+> platform [úlovdomov.cz](https://www.ulovdomov.cz) — production Playwright
+> test automation **and** a multi-agent AI customer-support chatbot
+> for the same platform.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-E2E-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
