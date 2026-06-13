@@ -1,96 +1,215 @@
-# UlovDomov.cz — E2E Test Suite
+# úlovdomov · Playwright tests + AI chatbot
 
-Playwright test automation for [ulovdomov.cz](https://www.ulovdomov.cz), the Czech real estate platform.
+> **⚠️ Portfolio DEMO project.** Not affiliated with úlovdomov.cz. Built to
+> demonstrate end-to-end **Quality Engineering** for a Czech real-estate
+> platform — production-style Playwright test automation **and** a concept
+> multi-agent AI customer-support chatbot for the same platform.
 
-## What's covered
+[![Demo project](https://img.shields.io/badge/⚠️_Portfolio-DEMO-orange?style=flat-square)](#license--disclaimer)
+[![Not affiliated](https://img.shields.io/badge/úlovdomov.cz-not_affiliated-lightgrey?style=flat-square)](https://www.ulovdomov.cz)
 
-| Test       | Type       | What it verifies                                             |
-| ---------- | ---------- | ------------------------------------------------------------ |
-| Homepage   | Smoke      | Hero section, search form, listing sections, navigation      |
-| Search     | Functional | Autocomplete location input, results match searched location |
-| Sort       | Functional | Price order after sorting by cheapest                        |
-| Navigation | Navigation | Post ad link, logo back to homepage                          |
-| Map        | Layout     | Map visible on desktop, hidden on mobile                     |
-| Responsive | Layout     | Mobile layout — search form, edit button, map hidden         |
-| Login      | Auth       | Login via modal with email/password                          |
-| Profile    | CRUD       | Edit personal data, save, reload and verify persistence      |
-| Detail     | Navigation | Click listing card, verify detail page loads (skip on 500)   |
-| E2E Flow   | E2E        | Homepage → search → sort → detail (full user journey)        |
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Playwright](https://img.shields.io/badge/Playwright-E2E-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![OpenAI](https://img.shields.io/badge/OpenAI%20SDK-4.x-412991?logo=openai&logoColor=white)](https://github.com/openai/openai-node)
+[![Azure OpenAI](https://img.shields.io/badge/Azure%20OpenAI-ready-0078D4?logo=microsoftazure&logoColor=white)](https://learn.microsoft.com/azure/ai-services/openai/)
+[![Docker](https://img.shields.io/badge/Docker-image-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-deploy-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 
-## Setup
+---
 
-```bash
-npm install
-npx playwright install chromium
+## What this repo is
+
+This is a **dual-module portfolio piece** that demonstrates full-stack
+quality engineering for a single real-world platform:
+
+### Module 1 — Playwright E2E test suite (`./` root + `tests/`)
+
+A production-style end-to-end test framework for úlovdomov.cz:
+
+- **Page Object Model** (POM) with strict TypeScript
+- **Fixtures** for parametrised setup (auth, locale, network mocks)
+- **Docker** image (slim, chromium-only) ready for CI runners
+- **Kubernetes Job** manifest for cluster-scheduled regression runs
+- **Slack** notification hook on CI failures
+
+Details in [`tests/README.md`](tests/README.md).
+
+### Module 2 — AI customer-support chatbot (`chatbot/`)
+
+A concept multi-agent LLM chatbot for the same platform:
+
+- **Intent router** (gpt-4o-mini, JSON-forced output, 5-class classifier)
+- **FAQ agent** with **RAG** retrieval over a Czech/Slovak knowledge base
+- **Escalation handler** with **tool calling** (mock backend ticket system)
+- **Conversation logger** + post-hoc analyzer (RAGAS-style faithfulness)
+- **Azure OpenAI deployment-ready** (one-line config switch)
+
+Details in [`chatbot/README.md`](chatbot/README.md).
+
+---
+
+## Why both in one repo
+
+The job title **AI Quality Engineer** sits at the intersection of two
+historically separate disciplines:
+
+| Discipline | This repo's contribution |
+|---|---|
+| **Software QE** | Playwright suite — automated regression of úlovdomov.cz |
+| **AI engineering** | Multi-agent chatbot with RAG and tool calling |
+| **AI testing** | Conversation log analyzer + planned Playwright tests of the chatbot's UI |
+
+In 2026, **testing AI systems** is a fast-growing niche — and the natural
+home for an engineer who's done both production test automation and LLM
+agent development. This repo is built to show all three sides at once.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph SUT["úlovdomov.cz · system under test"]
+        Web[Web app]
+        API[Backend API]
+    end
+
+    subgraph M1["Module 1 · Playwright E2E"]
+        PW[Playwright tests]
+        POM[Page Objects]
+        Fix[Fixtures]
+        PW --> POM
+        PW --> Fix
+    end
+
+    subgraph M2["Module 2 · AI Chatbot"]
+        Router[Intent Router]
+        FAQ[FAQ Agent + RAG]
+        Esc[Escalation Handler]
+        Logger[Conversation Logger]
+        Router --> FAQ
+        Router --> Esc
+        FAQ --> Logger
+        Esc --> Logger
+    end
+
+    subgraph CI["CI/CD"]
+        GHA[GitHub Actions]
+        Docker[Docker image]
+        K8s[Kubernetes Job]
+    end
+
+    POM --> Web
+    Fix --> API
+    PW -.->|future v0.2| FAQ
+    PW -.->|future v0.2| Esc
+    GHA --> Docker
+    Docker --> K8s
+    K8s --> PW
+
+    style SUT fill:#fff7ed,stroke:#fb923c
+    style M1 fill:#eff6ff,stroke:#3b82f6
+    style M2 fill:#f0fdf4,stroke:#22c55e
+    style CI fill:#fef3c7,stroke:#f59e0b
 ```
 
-Create `.env` in the project root:
+The dashed lines show the planned **cross-module integration**: Playwright
+tests will also validate the chatbot's UI behavior (intent classification
+accuracy from end-user perspective, escalation flow correctness, RAG
+groundedness via UI assertions). This is the "AI testing" piece of the
+AI Quality Engineer story.
+
+---
+
+## Repository structure
 
 ```
-BASE_URL=https://www.ulovdomov.cz
-TEST_USER_EMAIL=your@email.com
-TEST_USER_PASSWORD=yourpassword
+ulovdomov-qe-suite/
+├── README.md                            ← you are here (suite overview)
+│
+├── Module 1 — Playwright E2E
+│   ├── tests/                           ← E2E test specs
+│   │   └── README.md                    ← testing module docs
+│   ├── pages/                           ← Page Object Model
+│   ├── fixtures/                        ← test fixtures
+│   ├── helpers/                         ← shared utilities
+│   ├── data/                            ← test data
+│   ├── docs/                            ← architecture, theory
+│   ├── playwright.config.ts             ← Playwright config
+│   ├── Dockerfile                       ← slim chromium-only CI image
+│   ├── job.yaml                         ← Kubernetes Job manifest
+│   ├── package.json
+│   └── tsconfig.json
+│
+└── Module 2 — AI Chatbot
+    └── chatbot/                         ← all chatbot code under here
+        ├── README.md                    ← chatbot module docs
+        ├── .env.example
+        ├── package.json                 ← chatbot has its own deps
+        ├── tsconfig.json
+        ├── src/
+        │   ├── llm-client.ts            ← endpoint-agnostic OpenAI client
+        │   ├── prompts/                 ← system prompts (markdown)
+        │   ├── agents/                  ← intent router, FAQ, escalation
+        │   ├── rag/                     ← retrieval-augmented generation
+        │   ├── tools/                   ← LLM-callable mock backend tools
+        │   ├── conversation-log.ts      ← JSONL append-only logger
+        │   └── conversation-log-analyzer.ts
+        ├── knowledge-base/              ← Czech/Slovak RAG sources
+        ├── docs/
+        │   ├── architecture.md
+        │   ├── prompts-iteration-log.md
+        │   └── azure-deployment.md
+        └── examples/
+            └── sample-conversations.md
 ```
 
-## Run tests
+The two modules have **separate `package.json` / `node_modules`** to keep
+their dependency trees independent — the Playwright suite doesn't pull
+in the OpenAI SDK, and the chatbot doesn't pull in Playwright. They share
+nothing at the JS level; the shared artifact is the **domain knowledge**
+about úlovdomov.cz captured in tests, page objects, and the chatbot's
+knowledge base.
 
-```bash
-# All tests
-npx playwright test --project=chromium
+---
 
-# Single test file
-npx playwright test tests/search.spec.ts --project=chromium
+## Quick links
 
-# With UI mode
-npx playwright test --project=chromium --ui
-```
+| Resource | Where |
+|---|---|
+| **Testing module setup** | [`tests/README.md`](tests/README.md) |
+| **Chatbot module setup** | [`chatbot/README.md`](chatbot/README.md) |
+| **Chatbot architecture** | [`chatbot/docs/architecture.md`](chatbot/docs/architecture.md) |
+| **Prompt iteration log** | [`chatbot/docs/prompts-iteration-log.md`](chatbot/docs/prompts-iteration-log.md) |
+| **Sample conversations** | [`chatbot/examples/sample-conversations.md`](chatbot/examples/sample-conversations.md) |
+| **Playwright config** | [`playwright.config.ts`](playwright.config.ts) |
+| **CI/CD K8s manifest** | [`job.yaml`](job.yaml) |
 
-## CI/CD
+---
 
-Tests run automatically via GitHub Actions:
+## Tech stack (combined)
 
-- **On push** to `main` — runs tests, notifies Slack on failure and success
-- **On pull request** — runs tests, blocks merge if tests fail
-- **Scheduled** — Mon–Fri at 8:00 UTC, notifies Slack on failure
-- **Manual** — trigger via `workflow_dispatch` in Actions tab
+| Layer | Tech |
+|---|---|
+| Language | TypeScript 5.7 (strict mode, both modules) |
+| Test runner | Playwright + chromium |
+| LLM SDK | `openai` (compatible with both OpenAI and Azure OpenAI) |
+| Vector store | In-memory (production: Azure AI Search) |
+| Containerisation | Docker (slim chromium image) |
+| Orchestration | Kubernetes Jobs |
+| Linting | ESLint flat config |
+| Notifications | Slack webhook (CI failures) |
 
-### Reports
+---
 
-- **Latest report**: [GitHub Pages](https://jurajjjjj1988.github.io/playwright/report/) (deployed after each main branch run)
-- **Artifacts**: HTML report + JSON results stored for 14 days per run
-- **Slack**: failure/success messages with test counts, duration, and link to report
+## License & disclaimer
 
-### Required secrets
+MIT — see [LICENSE](LICENSE).
 
-| Secret               | Description                              |
-| -------------------- | ---------------------------------------- |
-| `BASE_URL`           | Target site URL                          |
-| `TEST_USER_EMAIL`    | Test account email                       |
-| `TEST_USER_PASSWORD` | Test account password                    |
-| `SLACK_WEBHOOK_URL`  | Slack incoming webhook for notifications |
+This is a **portfolio project**. Not affiliated with úlovdomov.cz or its
+operator. All trademarks belong to their respective owners. Test selectors,
+test data, and chatbot knowledge base reflect **publicly available** info
+from the live site for educational/demonstration purposes.
 
-## Project structure
-
-```
-├── pages/                   # Page Object Models
-│   ├── base.page.ts         # Shared: navigation, overlay dismiss, URL checks
-│   ├── home.page.ts         # Homepage: search form, listings
-│   ├── search-results.page.ts
-│   ├── login.page.ts        # Login modal
-│   └── profile.page.ts      # Profile edit form
-├── fixtures/                # Playwright fixtures for POM injection
-├── helpers/                 # Reusable utilities (price parsing, etc.)
-├── data/                    # Test constants and credentials reference
-├── tests/                   # Test specs
-├── .github/workflows/       # CI pipeline
-├── playwright.config.ts
-└── .env                     # Environment variables (not committed)
-```
-
-## Notes
-
-- Cookie consent is automatically dismissed via `BasePage.dismissOverlay()`
-- Login uses a modal, not a separate page — selectors use `data-test` attributes
-- Listing detail tests may be skipped if the server returns 500 (external site instability)
-- Tests run with 2 workers locally, 1 worker in CI to avoid rate limiting
-- CI reporter outputs HTML (for Pages), JSON (for Slack stats), and GitHub annotations
+Built by **[Juraj Kapusansky](https://github.com/Jurajjjjj1988)** —
+AI Quality Engineer · Bratislava, Slovakia.
