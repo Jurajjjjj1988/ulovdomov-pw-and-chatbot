@@ -9,3 +9,5 @@ logs/
 .idea/
 coverage/
 .cache/
+package-lock.json
+knowledge-base/.index.json

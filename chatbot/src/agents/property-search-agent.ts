@@ -28,6 +28,7 @@ export interface PropertySearchResult {
   text: string;
   /** Number of search_listings tool invocations the agent made. */
   searchCalls: number;
+  usage: { prompt: number; completion: number };
 }
 
 export async function handlePropertySearch(
@@ -54,5 +55,9 @@ export async function handlePropertySearch(
   return {
     text: message?.content ?? "",
     searchCalls: toolCallCount,
+    usage: {
+      prompt: completion.usage?.prompt_tokens ?? 0,
+      completion: completion.usage?.completion_tokens ?? 0,
+    },
   };
 }

@@ -20,6 +20,8 @@
 import { readFileSync, existsSync } from "node:fs";
 import { parseArgs } from "node:util";
 
+import { formatCostUsd } from "./cost-tracker.js";
+
 interface ConversationTurnRow {
   ts: string;
   conversationId: string;
@@ -28,6 +30,15 @@ interface ConversationTurnRow {
   toolCalls: Array<{ name: string }>;
   latencyMs: number;
   tokensUsed: { prompt: number; completion: number };
+  /** Present from v0.1.1 onward; legacy rows have it as undefined. */
+  costUsd?: number;
+  model?: string;
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+  return sorted[idx]!;
 }
 
 function loadRows(path: string): ConversationTurnRow[] {
@@ -104,14 +115,22 @@ function main(): void {
   const escalationRate = ((escalationCount / rows.length) * 100).toFixed(1);
   console.log(`\nEscalation rate: ${escalationCount}/${rows.length} (${escalationRate}%)`);
 
-  // --- Latency + tokens ---
-  const totalLatency = rows.reduce((acc, r) => acc + r.latencyMs, 0);
+  // --- Latency + tokens + cost ---
+  const sortedLatencies = rows.map((r) => r.latencyMs).sort((a, b) => a - b);
+  const p50 = percentile(sortedLatencies, 50);
+  const p95 = percentile(sortedLatencies, 95);
   const totalTokensIn = rows.reduce((acc, r) => acc + r.tokensUsed.prompt, 0);
   const totalTokensOut = rows.reduce((acc, r) => acc + r.tokensUsed.completion, 0);
-  console.log(`\nAverage latency: ${(totalLatency / rows.length).toFixed(0)} ms/turn`);
+  const totalCost = rows.reduce((acc, r) => acc + (r.costUsd ?? 0), 0);
+
+  console.log(`\nLatency:         p50 ${p50} ms · p95 ${p95} ms`);
   console.log(
     `Average tokens:  ${(totalTokensIn / rows.length).toFixed(0)} prompt, ` +
       `${(totalTokensOut / rows.length).toFixed(0)} completion`,
+  );
+  console.log(
+    `Cost:            ${formatCostUsd(totalCost)} total · ` +
+      `${formatCostUsd(totalCost / rows.length)} avg/turn`,
   );
 }
 

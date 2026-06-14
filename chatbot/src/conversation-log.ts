@@ -29,6 +29,7 @@ import { dirname } from "node:path";
 
 import type { IntentResult } from "./agents/intent-router.js";
 import type { RetrievedChunk } from "./rag/retriever.js";
+import type { GuardResult } from "./guard.js";
 
 export interface ConversationTurn {
   ts: string;
@@ -41,6 +42,14 @@ export interface ConversationTurn {
   toolCalls: Array<{ name: string; args: Record<string, unknown> }>;
   latencyMs: number;
   tokensUsed: { prompt: number; completion: number };
+  /** Estimated USD cost (router + downstream agent). See cost-tracker.ts. */
+  costUsd: number;
+  /** Model identifier (deployment name on Azure, model name on OpenAI direct). */
+  model: string;
+  /** "openai" or "azure" — captured for billing reconciliation. */
+  backend: "openai" | "azure";
+  /** Guard verdict + reasons. See guard.ts. */
+  guard: GuardResult;
 }
 
 const DEFAULT_LOG_PATH = "./logs/conversations.jsonl";

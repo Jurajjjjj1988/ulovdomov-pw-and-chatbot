@@ -25,10 +25,15 @@ const SYSTEM_PROMPT = readFileSync(
   "utf8",
 );
 
+export interface SmalltalkResult {
+  text: string;
+  usage: { prompt: number; completion: number };
+}
+
 export async function handleSmalltalk(
   userMessage: string,
   conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = [],
-): Promise<string> {
+): Promise<SmalltalkResult> {
   const client = getChatClient();
   const completion = await client.chat.completions.create({
     model: getChatModel(),
@@ -42,5 +47,11 @@ export async function handleSmalltalk(
     ],
   });
 
-  return completion.choices[0]?.message?.content ?? "";
+  return {
+    text: completion.choices[0]?.message?.content ?? "",
+    usage: {
+      prompt: completion.usage?.prompt_tokens ?? 0,
+      completion: completion.usage?.completion_tokens ?? 0,
+    },
+  };
 }

@@ -20,6 +20,7 @@ import chalk from "chalk";
 
 import { processTurn } from "./index.js";
 import { detectBackend } from "./llm-client.js";
+import { formatCostUsd } from "./cost-tracker.js";
 
 async function main(): Promise<void> {
   const backend = detectBackend();
@@ -62,7 +63,11 @@ async function main(): Promise<void> {
         const tools = record.toolCalls.map((t) => t.name).join(", ");
         console.log(chalk.gray(`   [tool] ${tools}`));
       }
-      console.log(chalk.gray(`   [latency] ${record.latencyMs} ms\n`));
+      console.log(
+        chalk.gray(
+          `   [latency] ${record.latencyMs} ms · [tokens] ${record.tokensUsed.prompt}p + ${record.tokensUsed.completion}c · [cost] ${formatCostUsd(record.costUsd)}\n`,
+        ),
+      );
 
       // Response
       console.log(chalk.bold.green("🤖 "));

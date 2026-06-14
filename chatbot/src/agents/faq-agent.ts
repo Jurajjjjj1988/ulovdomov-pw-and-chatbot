@@ -23,6 +23,7 @@ const SYSTEM_PROMPT = readFileSync(
 export interface FaqAnswer {
   text: string;
   citedSources: string[];
+  usage: { prompt: number; completion: number };
 }
 
 /** Build the augmented system prompt by appending RAG chunks. */
@@ -66,5 +67,12 @@ export async function answerFaq(
     .map((c) => c.source)
     .filter((s) => text.toLowerCase().includes(s.toLowerCase().replace(".md", "")));
 
-  return { text, citedSources };
+  return {
+    text,
+    citedSources,
+    usage: {
+      prompt: completion.usage?.prompt_tokens ?? 0,
+      completion: completion.usage?.completion_tokens ?? 0,
+    },
+  };
 }

@@ -36,6 +36,7 @@ export interface EscalationResult {
   text: string;
   ticketId: string | null;
   step: "acknowledge" | "clarify" | "confirm";
+  usage: { prompt: number; completion: number };
 }
 
 export async function handleEscalation(
@@ -68,5 +69,9 @@ export async function handleEscalation(
     text: message?.content ?? "",
     ticketId,
     step: ticketId ? "confirm" : "acknowledge",
+    usage: {
+      prompt: completion.usage?.prompt_tokens ?? 0,
+      completion: completion.usage?.completion_tokens ?? 0,
+    },
   };
 }

@@ -14,11 +14,13 @@
 import OpenAI, { AzureOpenAI } from "openai";
 import "dotenv/config";
 
+export type Backend = "openai" | "azure";
+
 let cachedClient: OpenAI | null = null;
-let cachedBackend: "openai" | "azure" | null = null;
+let cachedBackend: Backend | null = null;
 
 /** Detect which backend is configured. */
-export function detectBackend(): "openai" | "azure" {
+export function detectBackend(): Backend {
   if (process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY) {
     return "azure";
   }

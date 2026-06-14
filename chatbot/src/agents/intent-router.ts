@@ -31,6 +31,7 @@ export interface IntentResult {
   intent: Intent;
   confidence: number;
   rationale: string;
+  usage: { prompt: number; completion: number };
 }
 
 const SYSTEM_PROMPT = readFileSync(
@@ -61,6 +62,11 @@ export async function routeIntent(userMessage: string): Promise<IntentResult> {
   const raw = completion.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw) as Partial<IntentResult>;
 
+  const usage = {
+    prompt: completion.usage?.prompt_tokens ?? 0,
+    completion: completion.usage?.completion_tokens ?? 0,
+  };
+
   // Defensive validation — the model is instructed to return one of 5 valid
   // intents, but with structured output we still validate so a hallucinated
   // intent name doesn't crash the orchestrator.
@@ -72,6 +78,7 @@ export async function routeIntent(userMessage: string): Promise<IntentResult> {
       intent: "faq",
       confidence: 0,
       rationale: `Invalid intent '${String(parsed.intent)}' returned by router — falling back to faq.`,
+      usage,
     };
   }
 
@@ -89,5 +96,6 @@ export async function routeIntent(userMessage: string): Promise<IntentResult> {
       typeof parsed.rationale === "string"
         ? parsed.rationale
         : "(no rationale provided)",
+    usage,
   };
 }
